@@ -33,8 +33,8 @@ For each PDF, outputs are:
 The Markdown-to-Excel stage sends `hybrid.md` to an OpenRouter model using
 strict JSON-schema output. The model classifies source spans into the fixed
 columns; it does not calculate or normalize values. The script rejects any
-non-empty mapped value that is not an exact substring of the Markdown. `FullText`
-and `FileName` are filled by the script itself.
+non-empty mapped value that is not an exact substring of the Markdown. `FileName`
+is filled by the script itself.
 
 The output is row-oriented: a certificate with multiple characteristic results
 produces one Excel row per result, repeating document-level fields on each row.

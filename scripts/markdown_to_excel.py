@@ -24,7 +24,6 @@ from typing import Any
 
 EXCEL_COLUMNS = [
     "Lot",
-    "FullText",
     "CertificateExternalId",
     "FileName",
     "OrderNumber",
@@ -45,9 +44,8 @@ EXCEL_COLUMNS = [
     "BaseMaterialType",
 ]
 
-LOCAL_FIELDS = {"FullText", "FileName"}
+LOCAL_FIELDS = {"FileName"}
 MAX_LENGTHS = {"SupplierName": 100, "CertificateId": 50, "BaseMaterialType": 50}
-EXCEL_CELL_MAX_CHARS = 32767
 DEFAULT_MODEL = "mistralai/mistral-small-24b-instruct-2501"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -72,7 +70,6 @@ def _json_schema() -> dict[str, Any]:
     field_descriptions = {
         "Lot": ("Batch Number or Lot number. Do not use order, delivery, shipment, "
         "certificate, customer/account, or material identifiers."),
-        "FullText": "Controlled by the caller; leave empty.",
         "CertificateExternalId": "External certificate identifier; if absent, use the exact printed Delivery Doc Number/Item identifier only when it is the document's stable external id.",
         "FileName": "Controlled by the caller; leave empty.",
         "OrderNumber": (
@@ -191,8 +188,8 @@ Rules:
   Property, the test method in TestMethod, the printed unit in Unit, and the printed
   result in Value. Repeat certificate-level fields on every measurement row.
 - Ignore Min and Max as separate fields because the target schema has no columns for
-  them; they remain available in FullText.
-- FullText and FileName are controlled by the caller: return them as empty strings.
+  them.
+- FileName is controlled by the caller: return it as an empty string.
 - Field hints:
   Lot = Batch Number or Lot number only; do not use order, delivery, shipment,
   certificate, customer/account, or material identifiers.
@@ -313,11 +310,6 @@ def validate_and_normalize(
     markdown_path: Path,
     file_name: str | None,
 ) -> dict[str, Any]:
-    if len(markdown) > EXCEL_CELL_MAX_CHARS:
-        raise ValueError(
-            f"FullText is {len(markdown)} characters; Excel cells support at most "
-            f"{EXCEL_CELL_MAX_CHARS}, so refusing to truncate the source"
-        )
     raw_rows = response.get("rows")
     if not isinstance(raw_rows, list) or not raw_rows:
         raise ValueError("LLM response must contain a non-empty rows array")
@@ -352,8 +344,7 @@ def validate_and_normalize(
                 )
             row[column] = value
 
-        # These two fields are deterministic and never trusted to the model.
-        row["FullText"] = markdown
+        # FileName is deterministic and never trusted to the model.
         row["FileName"] = source_file_name
         rows.append({column: row[column] for column in EXCEL_COLUMNS})
 

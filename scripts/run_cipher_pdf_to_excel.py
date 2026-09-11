@@ -25,7 +25,10 @@ def run(command: list[str]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", default=os.environ.get("OPENROUTER_MODEL", "openai/gpt-5-nano"))
+    parser.add_argument(
+        "--model",
+        default=os.environ.get("OPENROUTER_MODEL", "mistralai/mistral-small-24b-instruct-2501"),
+    )
     parser.add_argument("--excel-output", type=Path, default=DEFAULT_EXCEL)
     parser.add_argument("--node", default=DEFAULT_NODE)
     parser.add_argument("--node-modules", default=DEFAULT_NODE_MODULES)

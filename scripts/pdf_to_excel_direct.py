@@ -109,7 +109,6 @@ def _normalize(response: dict[str, Any], pdf_path: Path) -> dict[str, Any]:
                 )
             row[column] = value
         # No local text extraction is performed in direct-PDF mode.
-        row["FullText"] = ""
         row["FileName"] = pdf_path.name
         rows.append(row)
     return {"columns": mapper.EXCEL_COLUMNS, "rows": rows, "source_pdf": str(pdf_path)}
