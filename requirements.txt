@@ -1,0 +1,2 @@
+# Python 3.12 is recommended on macOS.
+docling>=2.50
