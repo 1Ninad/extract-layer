@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from clean_docling_output import characteristic_table, clean_text
+from clean_docling_output import clean_text
 
 
 def _grid_from_table(raw_table: dict[str, Any]) -> list[list[str]]:
@@ -77,12 +77,6 @@ def _generic_table(raw_table: dict[str, Any]) -> dict[str, Any]:
 def table_from_raw(raw_table: dict[str, Any]) -> dict[str, Any]:
     """Return a clean table object suitable for Markdown and JSON output."""
 
-    grid = _grid_from_table(raw_table)
-    first_row = grid[0] if grid else []
-    if any("Characteristic" in value for value in first_row):
-        # Reuse the certificate-specific cleanup already used by the legacy
-        # Docling artifact writer, including its two-line label correction.
-        return characteristic_table({"tables": [raw_table]})
     return _generic_table(raw_table)
 
 

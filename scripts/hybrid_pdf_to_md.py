@@ -161,7 +161,7 @@ def build(input_pdf: Path, output_dir: Path, liteparse_binary: str | None = None
         output_dir / "docling_tables.md",
         use_ocr=use_ocr,
     )
-    hybrid_md = output_dir / "hybrid.md"
+    hybrid_md = output_dir / "final.md"
     hybrid_md.write_text(merge_markdown(liteparse_md.read_text(encoding="utf-8"), records), encoding="utf-8")
     return hybrid_md
 
