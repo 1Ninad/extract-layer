@@ -199,6 +199,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--backgroun
 .result-fields > div { min-width: 0; padding: 10px 0; display: grid; grid-template-columns: minmax(110px, 0.7fr) minmax(0, 1.3fr); align-items: baseline; gap: 10px; border-bottom: 1px solid rgba(222, 222, 215, 0.72); }
 .result-fields dt { color: var(--muted); font-size: 12px; }
 .result-fields dd { margin: 0; overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; font: 12.5px/1.4 var(--mono); }
+.automatic-fields dd { white-space: pre-wrap; overflow-wrap: anywhere; }
 .result-fields dd.missing { color: var(--faint); font-family: var(--sans); font-style: italic; }
 .records-output { margin-top: 15px; border-top: 1px solid var(--border); }
 .records-scroll { overflow-x: auto; }

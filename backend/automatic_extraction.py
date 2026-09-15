@@ -489,6 +489,91 @@ def _attach_block_pages(fields: list[dict[str, Any]], blocks: list[TextBlock]) -
             field["source"] = source
 
 
+def _same_bbox(left: Any, right: Any, tolerance: float = 1.5) -> bool:
+    if not isinstance(left, dict) or not isinstance(right, dict):
+        return False
+    return all(
+        isinstance(left.get(key), (int, float))
+        and isinstance(right.get(key), (int, float))
+        and abs(left[key] - right[key]) <= tolerance
+        for key in ("left", "top", "right", "bottom")
+    )
+
+
+def _merge_value_continuations(fields: list[dict[str, Any]], blocks: list[TextBlock]) -> tuple[list[dict[str, Any]], set[str]]:
+    """Keep text directly below a mapped value with that same field."""
+
+    value_sources = [
+        (field, field.get("source") or {})
+        for field in fields
+        if isinstance(field.get("source"), dict) and field["source"].get("value_bbox")
+    ]
+    kept_fields: list[dict[str, Any]] = []
+    removed_value_labels: set[str] = set()
+    for field in fields:
+        source = field.get("source") or {}
+        is_value_relabel = any(
+            other is not field
+            and _normal(str(field.get("label", ""))) == _normal(str(other.get("value", "")))
+            and _same_bbox(source.get("bbox"), other_source.get("value_bbox"))
+            for other, other_source in value_sources
+        )
+        if is_value_relabel:
+            removed_value_labels.add(_normal(str(field.get("label", ""))))
+            continue
+        kept_fields.append(field)
+
+    protected_boxes = [
+        box
+        for field in kept_fields
+        for box in ((field.get("source") or {}).get("bbox"), (field.get("source") or {}).get("value_bbox"))
+        if box
+    ]
+    label_blocks_by_page: dict[int, list[TextBlock]] = {}
+    for block in blocks:
+        if ":" in block.text or block.label in {"section_header", "title"}:
+            label_blocks_by_page.setdefault(block.page, []).append(block)
+    continuation_texts: set[str] = set()
+    for field in kept_fields:
+        source = field.get("source") or {}
+        value_bbox = source.get("value_bbox")
+        page = source.get("page")
+        if not isinstance(value_bbox, dict) or not isinstance(page, int) or not field.get("value"):
+            continue
+        value_height = max(value_bbox.get("bottom", 0) - value_bbox.get("top", 0), 1)
+        last_bottom = value_bbox["bottom"]
+        continuation: list[str] = []
+        for block in blocks:
+            if block.page != page or _same_bbox(block.bbox, value_bbox) or any(_same_bbox(block.bbox, box) for box in protected_boxes):
+                continue
+            if block.bbox["top"] < last_bottom - 1:
+                continue
+            if abs(block.bbox["left"] - value_bbox["left"]) > max(12, value_height * 2):
+                continue
+            horizontal_overlap = min(value_bbox["right"], block.bbox["right"]) - max(value_bbox["left"], block.bbox["left"])
+            if horizontal_overlap <= 0:
+                continue
+            if any(
+                other is not block
+                and other.bbox["right"] < block.bbox["left"]
+                and _same_row(other, block)
+                for other in label_blocks_by_page.get(block.page, [])
+            ):
+                continue
+            vertical_gap = block.bbox["top"] - last_bottom
+            if vertical_gap > max(18, value_height * 3):
+                if continuation:
+                    break
+                continue
+            continuation.append(block.text)
+            continuation_texts.add(_normal(block.text))
+            last_bottom = block.bbox["bottom"]
+            value_height = max(value_height, block.bbox["bottom"] - block.bbox["top"])
+        if continuation:
+            field["value"] = "\n".join([str(field["value"]), *continuation])
+    return kept_fields, continuation_texts | removed_value_labels
+
+
 def _table_output(table_records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     output: list[dict[str, Any]] = []
     for index, record in enumerate(table_records, start=1):
@@ -527,13 +612,17 @@ def extract_automatic(markdown: str, raw_document: dict[str, Any], table_records
     coordinate_fields, unlabeled = _coordinate_fields(blocks)
     fields, review = _reconcile(markdown_fields, coordinate_fields)
     _attach_block_pages(fields, blocks)
+    fields, consumed_coordinate_texts = _merge_value_continuations(fields, blocks)
     fields, field_duplicates = _dedupe_fields(fields)
     accepted_labels = {_normal(str(field.get("label", ""))) for field in fields if field.get("label")}
     unlabeled = [item for item in unlabeled if _normal(str(item.get("text", ""))) not in accepted_labels]
     review = [
         item
         for item in review
-        if not (item.get("review_text") and _normal(str(item["review_text"])) in accepted_labels)
+        if not (
+            item.get("review_text")
+            and _normal(str(item["review_text"])) in (accepted_labels | consumed_coordinate_texts)
+        )
     ]
     tables = _table_output(table_records)
     table_duplicates = sum(len(table.get("duplicate_pages", [])) for table in tables)
