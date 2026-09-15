@@ -17,7 +17,7 @@ the command-line runner.
 Run both services from the repository root with one command:
 
 ```bash
-bash scripts/run_web_app.sh
+bash run_web_app.sh
 ```
 
 Then open `http://127.0.0.1:3000`. Press `Ctrl-C` to stop both services.
@@ -66,7 +66,7 @@ Set `OPENROUTER_API_KEY` in the environment or in `.env`.
 Create a readable TOML schema with the guided wizard:
 
 ```bash
-python scripts/run_pdf_to_outputs.py --init-schema config/invoice.toml
+python -m backend.run_pdf_to_outputs --init-schema config/invoice.toml
 ```
 
 The wizard asks for an overall document description and each field's name,
@@ -78,7 +78,7 @@ The example input in this repository is `examples/input.pdf`, with its
 reusable extraction schema in `examples/input.toml`. Run it with:
 
 ```bash
-.venv/bin/python scripts/run_pdf_to_outputs.py \
+.venv/bin/python -m backend.run_pdf_to_outputs \
   --pdf examples/input.pdf \
   --schema examples/input.toml \
   --output-dir examples \
@@ -140,7 +140,7 @@ JSON keys and CSV headers.
 Process one PDF explicitly:
 
 ```bash
-python scripts/run_pdf_to_outputs.py \
+python -m backend.run_pdf_to_outputs \
   --pdf input_pdf/invoice.pdf \
   --schema config/invoice.toml
 ```
@@ -148,7 +148,7 @@ python scripts/run_pdf_to_outputs.py \
 If `input_pdf/` contains exactly one PDF, `--pdf` can be omitted:
 
 ```bash
-python scripts/run_pdf_to_outputs.py --schema config/invoice.toml
+python -m backend.run_pdf_to_outputs --schema config/invoice.toml
 ```
 
 Useful options:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -8,12 +7,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
 
-from extraction_schema import ExtractionSchema, FieldSpec, RecordSpec, write_toml  # noqa: E402
-from hybrid_pdf_to_md import merge_markdown  # noqa: E402
-from run_pdf_to_outputs import extract_result, select_pdf, write_outputs  # noqa: E402
-from schema_extractor import (  # noqa: E402
+from backend.extraction_schema import ExtractionSchema, FieldSpec, RecordSpec, write_toml
+from backend.hybrid_pdf_to_md import merge_markdown
+from backend.run_pdf_to_outputs import extract_result, select_pdf, write_outputs
+from backend.schema_extractor import (
     csv_rows,
     has_exact_source_span,
     json_schema,
@@ -264,7 +262,7 @@ class ExtractionTests(unittest.TestCase):
                 }
             }
         }
-        with patch("run_pdf_to_outputs.call_openrouter", side_effect=[invalid, valid]) as call:
+        with patch("backend.run_pdf_to_outputs.call_openrouter", side_effect=[invalid, valid]) as call:
             result = extract_result(Path("fund.pdf"), markdown, nested_schema(), "key", "model")
         self.assertEqual(call.call_count, 2)
         self.assertEqual(

@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from docling_tables import extract, table_markdown
+from .docling_tables import extract, table_markdown
 
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -14,7 +14,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from extraction_schema import ExtractionSchema, FieldSpec
+from .extraction_schema import ExtractionSchema, FieldSpec
 
 
 DEFAULT_MODEL = "mistralai/mistral-small-24b-instruct-2501"

@@ -7,7 +7,6 @@ import csv
 import io
 import json
 import os
-import sys
 import tempfile
 import time
 import unicodedata
@@ -21,12 +20,9 @@ from pypdf import PdfReader
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "scripts"
-if str(SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS))
 
-from extraction_schema import ExtractionSchema  # noqa: E402
-from schema_extractor import (  # noqa: E402
+from .extraction_schema import ExtractionSchema
+from .schema_extractor import (
     DEFAULT_MODEL,
     call_openrouter,
     csv_rows,
@@ -169,7 +165,7 @@ def _run_extraction_once(
 ) -> tuple[dict[str, object], str]:
     # Docling is intentionally imported here so health and schema endpoints can
     # still diagnose configuration when the parser runtime is incomplete.
-    from hybrid_pdf_to_md import build
+    from .hybrid_pdf_to_md import build
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:

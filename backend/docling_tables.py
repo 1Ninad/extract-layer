@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from clean_docling_output import clean_text
+from .clean_docling_output import clean_text
 
 
 def _grid_from_table(raw_table: dict[str, Any]) -> list[list[str]]:

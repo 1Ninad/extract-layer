@@ -11,7 +11,7 @@ from pypdf import PdfWriter
 
 from backend.main import app
 from backend.main import _run_extraction, _validate_native_markdown
-from extraction_schema import ExtractionSchema
+from backend.extraction_schema import ExtractionSchema
 
 
 class BackendTests(unittest.TestCase):

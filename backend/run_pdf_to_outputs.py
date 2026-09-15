@@ -11,9 +11,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-from extraction_schema import create_schema_interactively
-from hybrid_pdf_to_md import build
-from schema_extractor import (
+from .extraction_schema import ExtractionSchema, create_schema_interactively
+from .hybrid_pdf_to_md import build
+from .schema_extractor import (
     DEFAULT_MODEL,
     call_openrouter,
     csv_rows,
@@ -111,8 +111,6 @@ def run(args: argparse.Namespace) -> tuple[Path, Path]:
         raise SystemExit(0)
 
     schema_path = (args.schema or DEFAULT_SCHEMA).resolve()
-    from extraction_schema import ExtractionSchema
-
     schema = ExtractionSchema.from_toml(schema_path)
     pdf_path = select_pdf(args.pdf, args.input_dir.resolve())
     api_key = args.api_key or os.environ.get("OPENROUTER_API_KEY")
