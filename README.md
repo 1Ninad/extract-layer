@@ -8,6 +8,36 @@ schema.
 The extractor preserves printed values. It does not translate, calculate,
 normalize dates, convert units, round numbers, or invent missing values.
 
+## Web application
+
+The repository includes a FastAPI backend and a separate Next.js frontend.
+The API calls the same validated LiteParse + Docling + OpenRouter pipeline as
+the command-line runner.
+
+Start the backend from the repository root:
+
+```bash
+source .venv/bin/activate
+uvicorn backend.main:app --reload --port 8000
+```
+
+In a second terminal, start the frontend:
+
+```bash
+cd frontend
+npm install
+cp .env.local.example .env.local
+npm run dev
+```
+
+Open `http://localhost:3000`. Upload one PDF (maximum 20 pages), define the
+document and optional repeated-record fields, then select **Extract data**.
+The result can be reviewed as a table or JSON and downloaded as JSON or CSV.
+
+The backend reads `OPENROUTER_API_KEY` and optional `OPENROUTER_MODEL` from the
+root environment or `.env`. `FRONTEND_ORIGINS` controls allowed browser origins.
+Interactive API documentation is available at `http://localhost:8000/docs`.
+
 ## Setup
 
 Use Python 3.12 on macOS for the broadest wheel compatibility:

@@ -12,6 +12,13 @@ tmp/
 __pycache__/
 *.py[cod]
 
+# Frontend build and local environment
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+frontend/CLAUDE.md
+frontend/*.tsbuildinfo
+
 # macOS
 .DS_Store
 
