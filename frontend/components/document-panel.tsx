@@ -46,7 +46,6 @@ export function DocumentPanel({ file, onFile, onExample, exampleLoading, demo, v
             {file ? <PdfDocumentViewer file={file} /> : <DemoDocument />}
           </div>
           <div className="document-actions">
-            <span>Document preview</span>
             <button type="button" className="quiet-button change-pdf-button" onClick={() => inputRef.current?.click()}>
               <FilePenLine aria-hidden="true" />
               Change PDF
