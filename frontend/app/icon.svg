@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="PDF extraction">
+  <rect width="32" height="32" rx="7" fill="#252821"/>
+  <path d="M9 6.5h9l5 5V25H9z" fill="#fffefa"/>
+  <path d="M18 6.5v5h5" fill="none" stroke="#b77a32" stroke-width="2"/>
+  <path d="M12 17h8M12 20.5h6" fill="none" stroke="#b77a32" stroke-linecap="round" stroke-width="2"/>
+</svg>

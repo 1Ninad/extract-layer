@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown, Info } from "lucide-react";
 import type { AutomaticExtractionResult, AutomaticReviewItem, ExtractionResponse, LegacyExtractionResult } from "@/lib/types";
 
 function isAutomatic(result: ExtractionResponse["result"]): result is AutomaticExtractionResult {
@@ -21,6 +22,28 @@ function ReviewList({ items, title }: { items: AutomaticReviewItem[]; title: str
   );
 }
 
+function StatusDisclosure({ label, note, kind }: { label: string; note: string; kind: "processing" | "mapping" }) {
+  const [open, setOpen] = useState(false);
+  const contentId = `${kind}-${label.toLowerCase().replaceAll(" ", "-")}-details`;
+
+  return (
+    <div className={`status-disclosure ${kind} ${open ? "open" : ""}`}>
+      <button
+        type="button"
+        className="status-disclosure-trigger"
+        aria-expanded={open}
+        aria-controls={contentId}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <Info aria-hidden="true" />
+        <span>{kind === "mapping" ? "Mapping details" : "Processing details"}</span>
+        <ChevronDown aria-hidden="true" />
+      </button>
+      {open ? <div className="status-disclosure-content" id={contentId} role="status"><strong>{label}</strong><span>{note}</span></div> : null}
+    </div>
+  );
+}
+
 function AutomaticResults({ result }: { result: AutomaticExtractionResult }) {
   const [tab, setTab] = useState<"overview" | "tables" | "review" | "json">("overview");
   const reviewCount = result.review.length;
@@ -32,7 +55,7 @@ function AutomaticResults({ result }: { result: AutomaticExtractionResult }) {
         </div>
         <p>{result.fields.length} fields · {result.tables.length} tables</p>
       </header>
-      <div className="automatic-note"><strong>Deterministic mapping</strong><span>Markdown structure and PDF coordinates were reconciled. No LLM was used.</span></div>
+      <StatusDisclosure kind="mapping" label="Deterministic mapping" note="Markdown structure and PDF coordinates were reconciled. No LLM was used." />
       <div className="results-scroll">
         {tab === "json" ? <pre className="json-output">{JSON.stringify(result, null, 2)}</pre> : null}
         {tab === "overview" ? <div className="table-output automatic-output"><section><div className="section-heading"><h2>Mapped fields</h2><span>{result.fields.length}</span></div><dl className="result-fields automatic-fields">{result.fields.map((field, index) => <div key={`${field.label}-${index}`}><dt>{field.label}</dt><dd className={field.status === "empty" ? "missing" : ""}>{field.status === "empty" ? "Explicitly blank" : field.value}</dd></div>)}</dl></section><ReviewList items={result.unlabeled} title="Unlabeled content" /></div> : null}
@@ -51,5 +74,5 @@ function LegacyResults({ result }: { result: LegacyExtractionResult }) {
 }
 
 export function Results({ response, visible }: { response: ExtractionResponse; visible: boolean }) {
-  return <section className={`workspace-pane data-pane results-pane ${visible ? "mobile-visible" : ""}`} aria-labelledby="results-heading"><div className={`processing-note ${response.processing.ocr_used ? "ocr" : "native"}`} role="status"><strong>{response.processing.ocr_used ? "OCR processing" : response.processing.mode === "automatic" ? "Automatic processing" : "Native text processing"}</strong><span>{response.processing.note}</span></div>{isAutomatic(response.result) ? <AutomaticResults result={response.result} /> : <LegacyResults result={response.result} />}</section>;
+  return <section className={`workspace-pane data-pane results-pane ${visible ? "mobile-visible" : ""}`} aria-labelledby="results-heading"><StatusDisclosure kind="processing" label={response.processing.ocr_used ? "OCR processing" : response.processing.mode === "automatic" ? "Automatic processing" : "Native text processing"} note={response.processing.note} />{isAutomatic(response.result) ? <AutomaticResults result={response.result} /> : <LegacyResults result={response.result} />}</section>;
 }

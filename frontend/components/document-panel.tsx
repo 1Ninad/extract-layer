@@ -1,6 +1,7 @@
 "use client";
 
 import { FileTextIcon, UploadIcon } from "@radix-ui/react-icons";
+import { FilePenLine } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type Props = {
@@ -41,12 +42,15 @@ export function DocumentPanel({ file, onFile, onExample, exampleLoading, demo, v
       <input ref={inputRef} type="file" accept="application/pdf,.pdf" hidden onChange={(event) => choose(event.target.files?.[0])} />
       {hasDocument ? (
         <>
-          <div className="document-toolbar">
-            <span>Document preview</span>
-            <button type="button" className="quiet-button" onClick={() => inputRef.current?.click()}>Change PDF</button>
-          </div>
           <div className="pdf-canvas">
             {file ? <PdfDocumentViewer file={file} /> : <DemoDocument />}
+          </div>
+          <div className="document-actions">
+            <span>Document preview</span>
+            <button type="button" className="quiet-button change-pdf-button" onClick={() => inputRef.current?.click()}>
+              <FilePenLine aria-hidden="true" />
+              Change PDF
+            </button>
           </div>
         </>
       ) : (

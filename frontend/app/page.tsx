@@ -1,6 +1,7 @@
 "use client";
 
 import { ReloadIcon } from "@radix-ui/react-icons";
+import { FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DocumentPanel } from "@/components/document-panel";
 import { ExportMenu } from "@/components/export-menu";
@@ -76,7 +77,10 @@ export default function Home() {
     <main className="app-shell">
       <div className="app-content">
         <header className="topbar">
-          <div className="product-label"><span className="product-kicker">Automatic PDF extraction</span><span className="product-title">Turn documents into usable data</span></div>
+          <div className="product-label" aria-label="Automatic PDF extraction workspace">
+            <span className="product-mark" aria-hidden="true"><FileText /></span>
+            <span className="product-copy"><span className="product-kicker">Automatic PDF extraction</span><span className="product-title">Turn documents into usable data</span></span>
+          </div>
           <div className="mobile-tabs" role="tablist" aria-label="Workspace views"><button type="button" role="tab" aria-selected={mobileView === "document"} onClick={() => setMobileView("document")}>Document</button><button type="button" role="tab" aria-selected={mobileView === "data"} onClick={() => setMobileView("data")}>{response ? "Extracted" : "How it works"}</button></div>
           <div className="topbar-actions">{response && !demo ? <button className="secondary-button" type="button" onClick={() => { setResponse(null); setMobileView("data"); }}><ReloadIcon /> Re-run</button> : null}{response ? <ExportMenu response={response} /> : <button className="primary-button" type="button" disabled={loading || exampleLoading || demo || !file} onClick={extract}>{loading ? "Extracting..." : "Extract automatically"}</button>}</div>
         </header>
