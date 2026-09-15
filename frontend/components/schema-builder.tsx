@@ -1,5 +1,5 @@
 import { Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
-import type { FieldDefinition, FieldType } from "@/lib/types";
+import type { FieldDefinition } from "@/lib/types";
 
 type Props = {
   schemaName: string;
@@ -16,21 +16,18 @@ type Props = {
   onRecordFields: (value: FieldDefinition[]) => void;
 };
 
-const fieldTypes: FieldType[] = ["text", "number", "date", "boolean"];
-
 function newField(): FieldDefinition {
-  return { id: crypto.randomUUID(), name: "", type: "text", description: "" };
+  return { id: crypto.randomUUID(), name: "", description: "" };
 }
 
 function FieldEditor({ fields, disabled, onChange }: { fields: FieldDefinition[]; disabled: boolean; onChange: (fields: FieldDefinition[]) => void }) {
   const update = (id: string, value: Partial<FieldDefinition>) => onChange(fields.map((field) => field.id === id ? { ...field, ...value } : field));
   return (
     <div className="field-editor">
-      <div className="field-editor-labels"><span>Field name</span><span>Type</span><span>Description</span><span /></div>
+      <div className="field-editor-labels"><span>Field name</span><span>Description</span><span /></div>
       {fields.map((field) => (
         <div className="schema-field-row" key={field.id}>
           <input aria-label="Field name" value={field.name} disabled={disabled} placeholder="field_name" onChange={(event) => update(field.id, { name: event.target.value })} />
-          <select aria-label={`Type for ${field.name || "field"}`} value={field.type} disabled={disabled} onChange={(event) => update(field.id, { type: event.target.value as FieldType })}>{fieldTypes.map((type) => <option key={type}>{type}</option>)}</select>
           <input aria-label={`Description for ${field.name || "field"}`} value={field.description} disabled={disabled} placeholder="How this value appears in the PDF" onChange={(event) => update(field.id, { description: event.target.value })} />
           <button className="icon-button" type="button" disabled={disabled || fields.length === 1} aria-label={`Remove ${field.name || "field"}`} onClick={() => onChange(fields.filter((item) => item.id !== field.id))}><Cross2Icon /></button>
         </div>
@@ -43,11 +40,11 @@ function FieldEditor({ fields, disabled, onChange }: { fields: FieldDefinition[]
 export function SchemaBuilder(props: Props) {
   return (
     <section className={`workspace-pane data-pane ${props.visible ? "mobile-visible" : ""}`} aria-labelledby="schema-heading">
-      <header className="pane-header"><div><h2 id="schema-heading">Extraction schema</h2><p>Describe the values you need from this document.</p></div></header>
+      <header className="pane-header"><div><span className="pane-kicker">Schema</span><h2 id="schema-heading">Describe the values you need</h2><p>Give each field a name and a short description.</p></div></header>
       <div className="schema-scroll">
         <div className="schema-meta">
-          <label>Schema name<input value={props.schemaName} disabled={props.disabled} onChange={(event) => props.onSchemaName(event.target.value)} /></label>
-          <label>Document description<textarea rows={3} value={props.description} disabled={props.disabled} onChange={(event) => props.onDescription(event.target.value)} /></label>
+          <label>Schema name<input value={props.schemaName} placeholder="e.g. invoice" disabled={props.disabled} onChange={(event) => props.onSchemaName(event.target.value)} /></label>
+          <label>Document description<textarea rows={3} value={props.description} placeholder="e.g. Extract the invoice number and issue date." disabled={props.disabled} onChange={(event) => props.onDescription(event.target.value)} /></label>
         </div>
         <fieldset className="mode-switch" disabled={props.disabled}>
           <legend>Output structure</legend>

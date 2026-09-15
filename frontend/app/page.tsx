@@ -1,6 +1,6 @@
 "use client";
 
-import { FileTextIcon, PlusIcon, ReloadIcon } from "@radix-ui/react-icons";
+import { ReloadIcon } from "@radix-ui/react-icons";
 import { useEffect, useMemo, useState } from "react";
 import { DocumentPanel } from "@/components/document-panel";
 import { ExportMenu } from "@/components/export-menu";
@@ -13,61 +13,50 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const RECORD_GROUP_NAME = "test_results";
 const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const RESERVED_FIELD_NAMES = new Set(["source_file", "schema", "fields", "records"]);
-const field = (name: string, description: string): FieldDefinition => ({ id: name, name, type: "text", description });
-const initialFields = [
-  field("company_name", "Issuing company shown in the header or footer"),
-  field("reference_code", "Exact value printed next to Certificate No."),
-  { ...field("issued_on", "Exact date printed next to Issue Date"), type: "date" as const },
-];
-const initialRecordFields = [
-  field("lot_number", "Batch or lot containing this result"),
-  field("characteristic", "Exact property or characteristic name"),
-  field("unit", "Exact unit for this result"),
-  field("result", "Exact printed result, including symbols"),
-  field("test_method", "Exact test method or standard"),
-];
+const initialFields: FieldDefinition[] = [{ id: "document-field-1", name: "", description: "" }];
+const initialRecordFields: FieldDefinition[] = [{ id: "record-field-1", name: "", description: "" }];
+
+type ExamplePayload = {
+  filename: string;
+  pdf_url: string;
+  schema: {
+    name: string;
+    description: string;
+    output_mode: "document" | "records";
+    fields: Array<{ name: string; description: string }>;
+    records?: { fields: Array<{ name: string; description: string }> };
+  };
+};
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [schemaName, setSchemaName] = useState("certificate_of_quality");
-  const [description, setDescription] = useState("Extract certificate identifiers and one record for each characteristic result. Preserve values exactly as printed.");
-  const [outputMode, setOutputMode] = useState<"document" | "records">("records");
+  const [schemaName, setSchemaName] = useState("");
+  const [description, setDescription] = useState("");
+  const [outputMode, setOutputMode] = useState<"document" | "records">("document");
   const [fields, setFields] = useState(initialFields);
   const [recordFields, setRecordFields] = useState(initialRecordFields);
   const [response, setResponse] = useState<ExtractionResponse | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [exampleLoading, setExampleLoading] = useState(false);
   const [demo, setDemo] = useState(false);
-  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
   const [mobileView, setMobileView] = useState<"document" | "data">("document");
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("demo") === "1") {
       setDemo(true);
       setResponse(demoResponse);
-      setApiOnline(true);
       return;
     }
-    const controller = new AbortController();
-    fetch(`${API_URL}/api/health`, { signal: controller.signal }).then((result) => setApiOnline(result.ok)).catch(() => setApiOnline(false));
-    return () => controller.abort();
   }, []);
-
-  useEffect(() => {
-    if (!file) { setPreviewUrl(""); return; }
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
 
   const schema = useMemo<SchemaDefinition>(() => ({
     schema_version: 1,
     name: schemaName.trim(),
     description: description.trim(),
     output_mode: outputMode,
-    fields: fields.map(({ id, ...rest }) => ({ ...rest, name: rest.name.trim(), description: rest.description.trim() })),
-    ...(outputMode === "records" ? { records: { name: RECORD_GROUP_NAME, description: "One record for every matching repeated item or table row.", fields: recordFields.map(({ id, ...rest }) => ({ ...rest, name: rest.name.trim(), description: rest.description.trim() })) } } : {}),
+    fields: fields.map(({ id, ...rest }) => ({ ...rest, type: "text" as const, name: rest.name.trim(), description: rest.description.trim() })),
+    ...(outputMode === "records" ? { records: { name: RECORD_GROUP_NAME, description: "One record for every matching repeated item or table row.", fields: recordFields.map(({ id, ...rest }) => ({ ...rest, type: "text" as const, name: rest.name.trim(), description: rest.description.trim() })) } } : {}),
   }), [schemaName, description, outputMode, fields, recordFields]);
 
   const allFields = outputMode === "records" ? [...schema.fields, ...(schema.records?.fields || [])] : schema.fields;
@@ -82,12 +71,44 @@ export default function Home() {
     allFields.every((item) => FIELD_NAME_PATTERN.test(item.name) && !RESERVED_FIELD_NAMES.has(item.name) && item.description) &&
     (outputMode === "document" || Boolean(schema.records?.fields.length)),
   );
-  const filename = file?.name || (demo ? "input.pdf" : "No document selected");
-  const status = loading ? "Extracting" : response ? `Done · ${response.page_count} page${response.page_count === 1 ? "" : "s"} · ${(response.elapsed_ms / 1000).toFixed(1)}s` : apiOnline === false ? "API unavailable" : file ? "Ready to extract" : "Waiting for PDF";
 
-  function chooseAnother() {
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
-    input?.click();
+  async function loadExample() {
+    setExampleLoading(true);
+    setError("");
+    try {
+      const configResponse = await fetch("/api/example");
+      const configBody = await configResponse.text();
+      if (!configResponse.ok) {
+        let detail = "Could not load the example schema.";
+        try { detail = (JSON.parse(configBody) as { detail?: string }).detail || detail; } catch { /* Keep the readable fallback. */ }
+        throw new Error(detail);
+      }
+      if (!configBody.trim()) throw new Error("The example schema response was empty. Restart the app and try again.");
+      let config: ExamplePayload;
+      try {
+        config = JSON.parse(configBody) as ExamplePayload;
+      } catch {
+        throw new Error("The example schema response was invalid. Restart the app and try again.");
+      }
+
+      const pdfResponse = await fetch(config.pdf_url);
+      if (!pdfResponse.ok) throw new Error("Could not load the example PDF.");
+      const pdf = await pdfResponse.blob();
+
+      setFile(new File([pdf], config.filename, { type: "application/pdf" }));
+      setSchemaName(config.schema.name);
+      setDescription(config.schema.description);
+      setOutputMode(config.schema.output_mode);
+      setFields(config.schema.fields.map((item) => ({ ...item, id: item.name })));
+      setRecordFields((config.schema.records?.fields || []).map((item) => ({ ...item, id: item.name })));
+      setResponse(null);
+      setDemo(false);
+      setMobileView("data");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not load the example.");
+    } finally {
+      setExampleLoading(false);
+    }
   }
 
   async function extract() {
@@ -119,27 +140,21 @@ export default function Home() {
 
   return (
     <main className="app-shell">
-      <aside className="rail" aria-label="Document controls">
-        <div className="rail-mark">D</div>
-        {file || demo ? <button type="button" className="rail-document active" aria-label={filename}><FileTextIcon /></button> : null}
-        <button type="button" className="rail-add" aria-label="Choose another PDF" onClick={chooseAnother}><PlusIcon /></button>
-      </aside>
-
       <div className="app-content">
         <header className="topbar">
-          <div className="file-status"><span className="filename">{filename}</span><span role="status" aria-live="polite" className={apiOnline === false ? "status-copy error-status" : "status-copy"}>{status}</span></div>
+          <div className="product-label"><span className="product-kicker">PDF extraction</span><span className="product-title">Turn documents into usable data</span></div>
           <div className="mobile-tabs" role="tablist" aria-label="Workspace views">
             <button type="button" role="tab" aria-selected={mobileView === "document"} onClick={() => setMobileView("document")}>Document</button>
             <button type="button" role="tab" aria-selected={mobileView === "data"} onClick={() => setMobileView("data")}>{response ? "Extracted" : "Schema"}</button>
           </div>
           <div className="topbar-actions">
             {response && !demo ? <button className="secondary-button" type="button" onClick={() => { setResponse(null); setMobileView("data"); }}><ReloadIcon /> Re-run</button> : null}
-            {response ? <ExportMenu response={response} /> : <button className="primary-button" type="button" disabled={loading || demo || !valid} onClick={extract}>{loading ? "Extracting..." : "Extract data"}</button>}
+            {response ? <ExportMenu response={response} /> : <button className="primary-button" type="button" disabled={loading || exampleLoading || demo || !valid} onClick={extract}>{loading ? "Extracting..." : "Extract data"}</button>}
           </div>
         </header>
 
         <div className="main-workspace">
-          <DocumentPanel file={file} previewUrl={previewUrl} onFile={(next) => { setFile(next); setResponse(null); setError(""); setMobileView("data"); }} demo={demo} visible={mobileView === "document"} />
+          <DocumentPanel file={file} onFile={(next) => { setFile(next); setResponse(null); setError(""); setMobileView("data"); }} onExample={loadExample} exampleLoading={exampleLoading} demo={demo} visible={mobileView === "document"} />
           {response ? <Results response={response} visible={mobileView === "data"} /> : <SchemaBuilder schemaName={schemaName} description={description} outputMode={outputMode} fields={fields} recordFields={recordFields} disabled={loading} visible={mobileView === "data"} onSchemaName={setSchemaName} onDescription={setDescription} onOutputMode={setOutputMode} onFields={setFields} onRecordFields={setRecordFields} />}
         </div>
         {error ? <div className="error-bar" role="alert">{error}</div> : null}
