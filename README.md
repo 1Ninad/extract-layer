@@ -131,6 +131,10 @@ Descriptions should explain how to distinguish a field from similar values in
 the document. Values are returned exactly as printed even when their declared
 type is `number` or `date`.
 
+Field names may use either machine-friendly underscores (`invoice_number`) or
+human-readable spaces (`Invoice Number`). The name is preserved exactly in the
+JSON keys and CSV headers.
+
 ## Run extraction
 
 Process one PDF explicitly:
@@ -175,8 +179,14 @@ The runner treats the LLM response as a candidate location, not as the final
 value. Exact matches are accepted directly. When the model adds harmless
 connective words or changes whitespace/case/punctuation, the normalizer
 projects the candidate back onto a unique source span and writes the Markdown
-value to JSON/CSV. Numeric tokens must still match exactly; ambiguous or
-unsupported values fail validation. Final JSON and CSV files are not written
+value to JSON/CSV. It can also recover a complete source span when the model
+omits non-numeric descriptive words inside that span. Numeric tokens must still
+match exactly; ambiguous or unsupported values fail validation. Final JSON and CSV files are not written
 when schema, response, or source-projection validation fails. The generalized
 path retries a source-validation failure up to three total extraction attempts,
 using the same Markdown and prompt; it does not send the original PDF.
+
+The web API first runs LiteParse and Docling with native text extraction. If
+that complete extraction pass fails, it reruns both parsers with OCR enabled.
+The response includes a processing note showing whether native extraction or
+the OCR fallback produced the result.

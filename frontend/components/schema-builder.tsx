@@ -27,7 +27,7 @@ function FieldEditor({ fields, disabled, onChange }: { fields: FieldDefinition[]
       <div className="field-editor-labels"><span>Field name</span><span>Description</span><span /></div>
       {fields.map((field) => (
         <div className="schema-field-row" key={field.id}>
-          <input aria-label="Field name" value={field.name} disabled={disabled} placeholder="field_name" onChange={(event) => update(field.id, { name: event.target.value })} />
+          <input aria-label="Field name" value={field.name} disabled={disabled} placeholder="Field name" onChange={(event) => update(field.id, { name: event.target.value })} />
           <input aria-label={`Description for ${field.name || "field"}`} value={field.description} disabled={disabled} placeholder="How this value appears in the PDF" onChange={(event) => update(field.id, { description: event.target.value })} />
           <button className="icon-button" type="button" disabled={disabled || fields.length === 1} aria-label={`Remove ${field.name || "field"}`} onClick={() => onChange(fields.filter((item) => item.id !== field.id))}><Cross2Icon /></button>
         </div>

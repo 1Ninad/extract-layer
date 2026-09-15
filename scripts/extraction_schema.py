@@ -14,6 +14,7 @@ from typing import Any, Callable, Iterable
 FIELD_TYPES = {"text", "number", "date", "boolean", "array", "object"}
 SCALAR_TYPES = {"text", "number", "date", "boolean"}
 NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+FIELD_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(?: +[A-Za-z_][A-Za-z0-9_]*)*$")
 RESERVED_NAMES = {"source_file", "schema", "fields", "records"}
 
 
@@ -26,10 +27,10 @@ class FieldSpec:
     fields: tuple["FieldSpec", ...] = ()
 
     def validate(self, location: str) -> None:
-        if not NAME_PATTERN.fullmatch(self.name):
+        if not FIELD_NAME_PATTERN.fullmatch(self.name):
             raise ValueError(
-                f"{location} field name {self.name!r} must contain only letters, numbers, and underscores, "
-                "and must not start with a number"
+                f"{location} field name {self.name!r} must contain letters, numbers, underscores, "
+                "and optional spaces between words, and must not start with a number"
             )
         if self.name in RESERVED_NAMES:
             raise ValueError(f"{location} field name {self.name!r} is reserved")

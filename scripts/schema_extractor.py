@@ -838,8 +838,11 @@ def _project_source_value(source: str, value: str, location: str) -> str:
     always sliced from ``source``; the model's spelling is never written out.
     """
 
-    if not value or has_exact_source_span(source, value):
+    if not value:
         return value
+    exact_span = _find_exact_source_span(source, value)
+    if exact_span is not None:
+        return source[exact_span[0] : exact_span[1]]
 
     projected = project_source_value(source, value)
     if projected is None:
@@ -854,8 +857,9 @@ def project_source_value(source: str, value: str) -> str | None:
     """Project a model candidate onto a unique, source-owned text span.
 
     This is deliberately conservative. It tolerates case, whitespace, and
-    punctuation differences plus a small set of connective words, but it does
-    not tolerate changed or missing numeric tokens.
+    punctuation differences, a small set of connective words, and omitted
+    non-numeric words inside a source span. It does not tolerate changed,
+    missing, or extra numeric tokens.
     """
 
     source_tokens = _source_tokens(source)
@@ -864,47 +868,54 @@ def project_source_value(source: str, value: str) -> str | None:
         return None
 
     model_numeric = [token for token in model_tokens if _contains_digit(token)]
+    substantive_model_tokens = [
+        token for token in model_tokens if token not in _SOURCE_WRAPPER_WORDS
+    ]
+    if not substantive_model_tokens:
+        return None
+
     candidates: dict[str, tuple[int, int]] = {}
     for source_index, source_token in enumerate(source_tokens):
-        for model_index, model_token in enumerate(model_tokens):
-            if source_token[0] != model_token:
-                continue
-            run_length = 0
-            while (
-                source_index + run_length < len(source_tokens)
-                and model_index + run_length < len(model_tokens)
-                and source_tokens[source_index + run_length][0]
-                == model_tokens[model_index + run_length]
+        if source_token[0] != substantive_model_tokens[0]:
+            continue
+
+        # The model may omit descriptive words from a source value. Find all
+        # ordered source-token matches, then return the complete source span.
+        states: list[list[tuple[str, int, int]]] = [[source_token]]
+        for model_token in substantive_model_tokens[1:]:
+            next_states: list[list[tuple[str, int, int]]] = []
+            for state in states:
+                previous_end = state[-1][2]
+                for candidate_token in source_tokens:
+                    if candidate_token[1] >= previous_end and candidate_token[0] == model_token:
+                        next_states.append([*state, candidate_token])
+            states = next_states
+            if not states:
+                break
+
+        for matched_tokens in states:
+            start = matched_tokens[0][1]
+            end = matched_tokens[-1][2]
+            start, end = _expand_value_punctuation(source, start, end)
+            candidate_text = source[start:end]
+            candidate_tokens = _source_tokens(candidate_text)
+            candidate_values = [token[0] for token in candidate_tokens]
+            candidate_alnum_count = len(candidate_values)
+            if candidate_alnum_count < 2 and not any(
+                _contains_digit(token) for token in candidate_values
             ):
-                run_length += 1
+                continue
+            if [token for token in candidate_values if _contains_digit(token)] != model_numeric:
+                continue
+            if _numeric_polarity(candidate_text) != _numeric_polarity(value):
+                continue
 
-            for length in range(1, run_length + 1):
-                candidate_tokens = source_tokens[source_index : source_index + length]
-                candidate_values = [token[0] for token in candidate_tokens]
-                candidate_alnum_count = len(candidate_values)
-                if candidate_alnum_count < 2 and not any(
-                    _contains_digit(token) for token in candidate_values
-                ):
-                    continue
-                if [token for token in candidate_values if _contains_digit(token)] != model_numeric:
-                    continue
-
-                unmatched_model = _unmatched_tokens(model_tokens, candidate_values)
-                if any(token not in _SOURCE_WRAPPER_WORDS for token in unmatched_model):
-                    continue
-
-                start = candidate_tokens[0][1]
-                end = candidate_tokens[-1][2]
-                start, end = _expand_value_punctuation(source, start, end)
-                candidate_text = source[start:end]
-                if _numeric_polarity(candidate_text) != _numeric_polarity(value):
-                    continue
-                # Prefer the smallest source span that explains all substantive
-                # model tokens. This strips labels while preserving source text.
-                rank = (-candidate_alnum_count, -len(unmatched_model))
-                previous = candidates.get(candidate_text)
-                if previous is None or rank > previous:
-                    candidates[candidate_text] = rank
+            # Prefer the smallest source span that explains all substantive
+            # model tokens. This strips labels while preserving source text.
+            rank = (-candidate_alnum_count, 0)
+            previous = candidates.get(candidate_text)
+            if previous is None or rank > previous:
+                candidates[candidate_text] = rank
 
     if not candidates:
         return None
@@ -975,11 +986,17 @@ def _unmatched_tokens(model_tokens: list[str], candidate_tokens: list[str]) -> l
 def has_exact_source_span(source: str, value: str) -> bool:
     """Reject a numeric value that is only a truncated part of a source token."""
 
+    return _find_exact_source_span(source, value) is not None
+
+
+def _find_exact_source_span(source: str, value: str) -> tuple[int, int] | None:
+    """Find an exact source occurrence that is not inside a larger number."""
+
     start = 0
     while True:
         position = source.find(value, start)
         if position < 0:
-            return False
+            return None
         end = position + len(value)
         previous = source[position - 1] if position else ""
         following = source[end] if end < len(source) else ""
@@ -988,7 +1005,7 @@ def has_exact_source_span(source: str, value: str) -> bool:
             bool(following) and following in string.digits
         )
         if not numeric_value or not adjacent_digit:
-            return True
+            return position, end
         start = position + 1
 
 

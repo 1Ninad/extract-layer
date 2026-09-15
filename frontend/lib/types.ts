@@ -31,4 +31,9 @@ export type ExtractionResponse = {
   csv: string;
   page_count: number;
   elapsed_ms: number;
+  processing: {
+    mode: "native" | "ocr_requested" | "ocr_fallback";
+    ocr_used: boolean;
+    note: string;
+  };
 };

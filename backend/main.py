@@ -10,6 +10,7 @@ import os
 import sys
 import tempfile
 import time
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -115,6 +116,56 @@ def _run_extraction(
     schema: ExtractionSchema,
     model: str,
     use_ocr: bool,
+) -> tuple[dict[str, object], str, dict[str, object]]:
+    """Run native extraction first, then retry the complete pipeline with OCR."""
+
+    if use_ocr:
+        result, csv_content = _run_extraction_once(
+            content, filename, schema, model, use_ocr=True
+        )
+        return result, csv_content, {
+            "mode": "ocr_requested",
+            "ocr_used": True,
+            "note": "OCR used. LiteParse and Docling processed this PDF with OCR enabled.",
+        }
+
+    try:
+        result, csv_content = _run_extraction_once(
+            content, filename, schema, model, use_ocr=False
+        )
+    except Exception:
+        print(
+            "Native extraction failed; retrying with LiteParse and Docling OCR enabled.",
+            flush=True,
+        )
+        try:
+            result, csv_content = _run_extraction_once(
+                content, filename, schema, model, use_ocr=True
+            )
+        except Exception as ocr_error:
+            raise RuntimeError(
+                "Native extraction failed, and the OCR fallback also failed: "
+                f"{ocr_error}"
+            ) from ocr_error
+        return result, csv_content, {
+            "mode": "ocr_fallback",
+            "ocr_used": True,
+            "note": "OCR fallback used. The initial native-text extraction failed, so LiteParse and Docling were rerun with OCR enabled.",
+        }
+
+    return result, csv_content, {
+        "mode": "native",
+        "ocr_used": False,
+        "note": "OCR not used. Native PDF text extraction succeeded.",
+    }
+
+
+def _run_extraction_once(
+    content: bytes,
+    filename: str,
+    schema: ExtractionSchema,
+    model: str,
+    use_ocr: bool,
 ) -> tuple[dict[str, object], str]:
     # Docling is intentionally imported here so health and schema endpoints can
     # still diagnose configuration when the parser runtime is incomplete.
@@ -130,6 +181,8 @@ def _run_extraction(
         pdf_path.write_bytes(content)
         markdown_path = build(pdf_path, working_dir / "parsed", None, use_ocr)
         markdown = markdown_path.read_text(encoding="utf-8")
+        if not use_ocr:
+            _validate_native_markdown(markdown)
         last_error: ValueError | None = None
         for attempt in range(3):
             candidate = call_openrouter(markdown, schema, api_key, model)
@@ -144,6 +197,24 @@ def _run_extraction(
             assert last_error is not None
             raise last_error
         return result, _to_csv(result, schema)
+
+
+def _validate_native_markdown(markdown: str) -> None:
+    """Reject empty or visibly corrupted native text before model extraction."""
+
+    if not markdown.strip():
+        raise ValueError("Native text extraction returned no usable text.")
+
+    invalid_characters = [
+        character
+        for character in markdown
+        if unicodedata.category(character) == "Cc" and character not in "\n\r\t"
+    ]
+    if invalid_characters:
+        raise ValueError(
+            "Native text extraction returned non-printable characters; "
+            "the source text is not reliable."
+        )
 
 
 @app.get("/api/health")
@@ -176,7 +247,7 @@ async def create_extraction(
 
     try:
         async with semaphore:
-            result, csv_content = await asyncio.to_thread(
+            result, csv_content, processing = await asyncio.to_thread(
                 _run_extraction, content, filename, parsed_schema, model, use_ocr
             )
     except (OSError, RuntimeError, ValueError) as exc:
@@ -187,4 +258,5 @@ async def create_extraction(
         "csv": csv_content,
         "page_count": page_count,
         "elapsed_ms": round((time.perf_counter() - started) * 1000),
+        "processing": processing,
     }

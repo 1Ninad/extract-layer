@@ -160,6 +160,29 @@ class ExtractionTests(unittest.TestCase):
         self.assertIn("quantity", generated["properties"]["records"]["items"]["properties"])
         self.assertEqual(generated["properties"]["records"]["items"]["required"], ["description", "quantity"])
 
+    def test_human_readable_field_names_are_preserved_in_schema_and_output(self) -> None:
+        schema = ExtractionSchema.from_mapping(
+            {
+                "schema_version": 1,
+                "name": "patient_report",
+                "description": "Extract patient details.",
+                "output_mode": "document",
+                "fields": [{"name": "Date of Birth", "type": "text", "description": "Printed date."}],
+            }
+        )
+        generated = json_schema(schema)["schema"]
+        self.assertIn("Date of Birth", generated["properties"]["fields"]["properties"])
+        result = normalize_response(
+            {"fields": {"Date of Birth": "01/01/1970"}},
+            "Date of Birth: 01/01/1970",
+            schema,
+            "patient.pdf",
+        )
+        self.assertEqual("01/01/1970", result["fields"]["Date of Birth"])
+        columns, rows = csv_rows(result, schema)
+        self.assertIn("Date of Birth", columns)
+        self.assertEqual("01/01/1970", rows[0]["Date of Birth"])
+
     def test_dynamic_json_schema_contains_nested_table_shape(self) -> None:
         generated = json_schema(nested_schema())["schema"]["properties"]["fields"]["properties"]
         table = generated["average_annual_returns"]
@@ -215,6 +238,13 @@ class ExtractionTests(unittest.TestCase):
     def test_projection_rejects_changed_date(self) -> None:
         source = "Average Annual Total Returns (for the periods ended December 31, 2024)"
         self.assertIsNone(project_source_value(source, "as of December 31, 2025"))
+
+    def test_projection_returns_complete_source_span_when_model_omits_words(self) -> None:
+        source = "Baso (Absolute) 02 | 0.1 | x10E3/uL"
+        self.assertEqual(
+            project_source_value(source, "Baso 02"),
+            "Baso (Absolute) 02",
+        )
 
     def test_cli_retries_transient_invalid_llm_response(self) -> None:
         markdown = "Average Annual Total Returns\nDecember 31, 2024"

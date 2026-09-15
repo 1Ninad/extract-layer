@@ -22,6 +22,10 @@ export function Results({ response, visible }: { response: ExtractionResponse; v
         </div>
         <p>{records.length ? `${records.length} records` : "1 document"}</p>
       </header>
+      <div className={`processing-note ${response.processing.ocr_used ? "ocr" : "native"}`} role="status">
+        <strong>{response.processing.ocr_used ? "OCR processing" : "Native text processing"}</strong>
+        <span>{response.processing.note}</span>
+      </div>
       <div className="results-scroll">
         {tab === "json" ? (
           <pre className="json-output">{JSON.stringify(response.result, null, 2)}</pre>

@@ -11,7 +11,7 @@ import type { ExtractionResponse, FieldDefinition, SchemaDefinition } from "@/li
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const RECORD_GROUP_NAME = "test_results";
-const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*(?: +[A-Za-z_][A-Za-z0-9_]*)*$/;
 const RESERVED_FIELD_NAMES = new Set(["source_file", "schema", "fields", "records"]);
 const initialFields: FieldDefinition[] = [{ id: "document-field-1", name: "", description: "" }];
 const initialRecordFields: FieldDefinition[] = [{ id: "record-field-1", name: "", description: "" }];
