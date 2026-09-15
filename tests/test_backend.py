@@ -35,6 +35,25 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(422, response.status_code)
         self.assertIn("description", response.json()["detail"])
 
+    def test_web_records_schema_name_is_accepted(self) -> None:
+        response = self.client.post(
+            "/api/schema/validate",
+            json={
+                "schema_version": 1,
+                "name": "certificate_of_quality",
+                "description": "Extract certificate rows.",
+                "output_mode": "records",
+                "fields": [{"name": "company_name", "type": "text", "description": "Issuing company."}],
+                "records": {
+                    "name": "test_results",
+                    "description": "One record per result row.",
+                    "fields": [{"name": "result", "type": "text", "description": "Printed result."}],
+                },
+            },
+        )
+        self.assertEqual(200, response.status_code)
+        self.assertEqual({"valid": True}, response.json())
+
     def test_extraction_rejects_more_than_twenty_pages_before_processing(self) -> None:
         writer = PdfWriter()
         for _ in range(21):

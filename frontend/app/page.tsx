@@ -10,6 +10,9 @@ import { demoResponse } from "@/lib/demo";
 import type { ExtractionResponse, FieldDefinition, SchemaDefinition } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const RECORD_GROUP_NAME = "test_results";
+const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const RESERVED_FIELD_NAMES = new Set(["source_file", "schema", "fields", "records"]);
 const field = (name: string, description: string): FieldDefinition => ({ id: name, name, type: "text", description });
 const initialFields = [
   field("company_name", "Issuing company shown in the header or footer"),
@@ -63,11 +66,22 @@ export default function Home() {
     name: schemaName.trim(),
     description: description.trim(),
     output_mode: outputMode,
-    fields: fields.map(({ id, ...rest }) => rest),
-    ...(outputMode === "records" ? { records: { name: "records", description: "One record for every matching repeated item or table row.", fields: recordFields.map(({ id, ...rest }) => rest) } } : {}),
+    fields: fields.map(({ id, ...rest }) => ({ ...rest, name: rest.name.trim(), description: rest.description.trim() })),
+    ...(outputMode === "records" ? { records: { name: RECORD_GROUP_NAME, description: "One record for every matching repeated item or table row.", fields: recordFields.map(({ id, ...rest }) => ({ ...rest, name: rest.name.trim(), description: rest.description.trim() })) } } : {}),
   }), [schemaName, description, outputMode, fields, recordFields]);
 
-  const valid = Boolean(file && schema.name && schema.description && schema.fields.every((item) => item.name && item.description) && (outputMode === "document" || recordFields.every((item) => item.name && item.description)));
+  const allFields = outputMode === "records" ? [...schema.fields, ...(schema.records?.fields || [])] : schema.fields;
+  const fieldNames = allFields.map((item) => item.name);
+  const hasDuplicateFields = new Set(fieldNames).size !== fieldNames.length;
+  const valid = Boolean(
+    file &&
+    schema.name &&
+    schema.description &&
+    !hasDuplicateFields &&
+    allFields.length > 0 &&
+    allFields.every((item) => FIELD_NAME_PATTERN.test(item.name) && !RESERVED_FIELD_NAMES.has(item.name) && item.description) &&
+    (outputMode === "document" || Boolean(schema.records?.fields.length)),
+  );
   const filename = file?.name || (demo ? "input.pdf" : "No document selected");
   const status = loading ? "Extracting" : response ? `Done · ${response.page_count} page${response.page_count === 1 ? "" : "s"} · ${(response.elapsed_ms / 1000).toFixed(1)}s` : apiOnline === false ? "API unavailable" : file ? "Ready to extract" : "Waiting for PDF";
 
@@ -79,10 +93,18 @@ export default function Home() {
   async function extract() {
     if (!file || !valid) { setError("Add a PDF and complete every schema field before extracting."); return; }
     setLoading(true); setError(""); setResponse(null);
-    const form = new FormData();
-    form.append("pdf", file);
-    form.append("schema", JSON.stringify(schema));
     try {
+      const validationResponse = await fetch(`${API_URL}/api/schema/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(schema),
+      });
+      const validationPayload = await validationResponse.json();
+      if (!validationResponse.ok) throw new Error(typeof validationPayload.detail === "string" ? validationPayload.detail : "Schema validation failed.");
+
+      const form = new FormData();
+      form.append("pdf", file);
+      form.append("schema", JSON.stringify(schema));
       const result = await fetch(`${API_URL}/api/extractions`, { method: "POST", body: form });
       const payload = await result.json();
       if (!result.ok) throw new Error(typeof payload.detail === "string" ? payload.detail : "Extraction failed.");

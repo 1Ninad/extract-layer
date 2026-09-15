@@ -14,6 +14,17 @@ The repository includes a FastAPI backend and a separate Next.js frontend.
 The API calls the same validated LiteParse + Docling + OpenRouter pipeline as
 the command-line runner.
 
+Run both services from the repository root with one command:
+
+```bash
+bash scripts/run_web_app.sh
+```
+
+Then open `http://127.0.0.1:3000`. Press `Ctrl-C` to stop both services.
+
+The launcher builds the frontend with the configured API URL before starting
+the production server.
+
 Start the backend from the repository root:
 
 ```bash
