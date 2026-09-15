@@ -47,6 +47,16 @@ def _normal(value: str) -> str:
     return " ".join(_tokens(value)).casefold()
 
 
+def _split_styled_label(value: str) -> list[str]:
+    """Split adjacent colon-ended labels that PDF text joined together."""
+
+    cleaned = _clean_markdown(value).strip()
+    parts = [part.strip(" \t:;") for part in cleaned.split(":") if part.strip(" \t:;")]
+    if len(parts) > 1 and all(_label_candidate(part) for part in parts):
+        return parts
+    return [cleaned]
+
+
 def _label_candidate(value: str) -> bool:
     value = _clean_markdown(value).strip(" \t-–—")
     if "|" in value:
@@ -158,12 +168,17 @@ def _markdown_fields(markdown: str, tables: list[dict[str, Any]]) -> list[dict[s
             continue
         styled_fields: list[tuple[str, str]] = []
         for styled_match in re.finditer(r"(?:\*\*|__)([^*_]+)(?:\*\*|__)\s+([^*|]+)", raw_line):
-            styled_fields.append((_normal(_clean_markdown(styled_match.group(1))), _clean_markdown(styled_match.group(2))))
-            if _label_candidate(styled_match.group(1)):
+            styled_value = _clean_markdown(styled_match.group(2))
+            styled_labels = _split_styled_label(styled_match.group(1))
+            for label_index, styled_label in enumerate(styled_labels):
+                field_value = styled_value if label_index == len(styled_labels) - 1 else ""
+                styled_fields.append((_normal(styled_label), field_value))
+                if not _label_candidate(styled_label):
+                    continue
                 fields.append(
                     {
-                        "label": _clean_markdown(styled_match.group(1)),
-                        "value": _clean_markdown(styled_match.group(2)),
+                        "label": styled_label,
+                        "value": field_value,
                         "confidence": 0.9,
                         "evidence": ["markdown_style"],
                         "source": {"kind": "markdown", "line": line_number, "text": _clean_markdown(styled_match.group(0))},
@@ -181,7 +196,7 @@ def _markdown_fields(markdown: str, tables: list[dict[str, Any]]) -> list[dict[s
             label, value = match.groups()
             if not _label_candidate(label):
                 continue
-            if not value.strip() and any(_normal(label) == styled_label and styled_value for styled_label, styled_value in styled_fields):
+            if any(_normal(label) == styled_label for styled_label, _ in styled_fields):
                 continue
             fields.append(
                 {
