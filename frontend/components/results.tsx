@@ -1,51 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import type { ExtractionResponse } from "@/lib/types";
+import type { AutomaticExtractionResult, AutomaticReviewItem, ExtractionResponse, LegacyExtractionResult } from "@/lib/types";
+
+function isAutomatic(result: ExtractionResponse["result"]): result is AutomaticExtractionResult {
+  return "mode" in result && result.mode === "automatic";
+}
 
 function display(value: unknown): string {
   if (value === null || value === undefined || value === "") return "Not found";
   return typeof value === "object" ? JSON.stringify(value) : String(value);
 }
 
-export function Results({ response, visible }: { response: ExtractionResponse; visible: boolean }) {
-  const [tab, setTab] = useState<"table" | "json">("table");
-  const records = response.result.records || [];
-  const columns = records[0] ? Object.keys(records[0]) : [];
-
+function ReviewList({ items, title }: { items: AutomaticReviewItem[]; title: string }) {
   return (
-    <section className={`workspace-pane data-pane results-pane ${visible ? "mobile-visible" : ""}`} aria-labelledby="results-heading">
-      <header className="pane-header results-header">
-        <div className="view-tabs" role="tablist" aria-label="Output views">
-          <button type="button" role="tab" aria-selected={tab === "table"} onClick={() => setTab("table")}>Table</button>
-          <button type="button" role="tab" aria-selected={tab === "json"} onClick={() => setTab("json")}>JSON</button>
-        </div>
-        <p>{records.length ? `${records.length} records` : "1 document"}</p>
-      </header>
-      <div className={`processing-note ${response.processing.ocr_used ? "ocr" : "native"}`} role="status">
-        <strong>{response.processing.ocr_used ? "OCR processing" : "Native text processing"}</strong>
-        <span>{response.processing.note}</span>
-      </div>
-      <div className="results-scroll">
-        {tab === "json" ? (
-          <pre className="json-output">{JSON.stringify(response.result, null, 2)}</pre>
-        ) : (
-          <div className="table-output">
-            <section aria-labelledby="results-heading">
-              <div className="section-heading"><h2 id="results-heading">Document fields</h2><span>{Object.keys(response.result.fields).length}</span></div>
-              <dl className="result-fields">
-                {Object.entries(response.result.fields).map(([key, value]) => <div key={key}><dt>{key}</dt><dd className={display(value) === "Not found" ? "missing" : ""}>{display(value)}</dd></div>)}
-              </dl>
-            </section>
-            {records.length ? (
-              <section className="records-output">
-                <div className="section-heading"><h2>{response.result.schema.replaceAll("_", " ")}</h2><span>{records.length} rows</span></div>
-                <div className="records-scroll"><table><thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>{records.map((record, index) => <tr key={index}>{columns.map((column) => <td key={column}>{display(record[column])}</td>)}</tr>)}</tbody></table></div>
-              </section>
-            ) : null}
-          </div>
-        )}
-      </div>
+    <section className="review-section">
+      <div className="section-heading"><h2>{title}</h2><span>{items.length}</span></div>
+      {items.length ? <div className="review-list">{items.map((item, index) => <article key={`${item.page || 0}-${index}`}><strong>{item.label || item.text || "Source content"}</strong>{item.value ? <span>{item.value}</span> : null}{item.markdown ? <span>{item.markdown}</span> : null}<small>{item.reason}{item.page ? ` · page ${item.page}` : ""}</small></article>)}</div> : <p className="empty-state">Nothing needs review.</p>}
     </section>
   );
+}
+
+function AutomaticResults({ result }: { result: AutomaticExtractionResult }) {
+  const [tab, setTab] = useState<"overview" | "tables" | "review" | "json">("overview");
+  const reviewCount = result.review.length;
+  return (
+    <>
+      <header className="pane-header results-header">
+        <div className="view-tabs" role="tablist" aria-label="Output views">
+          {(["overview", "tables", "review", "json"] as const).map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => setTab(item)}>{item === "overview" ? "Overview" : item[0].toUpperCase() + item.slice(1)}{item === "review" && reviewCount ? ` (${reviewCount})` : ""}</button>)}
+        </div>
+        <p>{result.fields.length} fields · {result.tables.length} tables</p>
+      </header>
+      <div className="automatic-note"><strong>Deterministic mapping</strong><span>Markdown structure and PDF coordinates were reconciled. No LLM was used.</span></div>
+      <div className="results-scroll">
+        {tab === "json" ? <pre className="json-output">{JSON.stringify(result, null, 2)}</pre> : null}
+        {tab === "overview" ? <div className="table-output automatic-output"><section><div className="section-heading"><h2>Mapped fields</h2><span>{result.fields.length}</span></div><dl className="result-fields automatic-fields">{result.fields.map((field, index) => <div key={`${field.label}-${index}`}><dt>{field.label}</dt><dd className={field.status === "empty" ? "missing" : ""}>{field.status === "empty" ? "Explicitly blank" : field.value}</dd></div>)}</dl></section><ReviewList items={result.unlabeled} title="Unlabeled content" /></div> : null}
+        {tab === "tables" ? <div className="table-output automatic-output">{result.tables.length ? result.tables.map((table) => <section className="automatic-table" key={table.id}><div className="section-heading"><div><h2>{table.name}</h2><p>Page{table.pages.length === 1 ? "" : "s"} {table.pages.join(", ") || "unknown"}{table.duplicate_pages?.length ? " · repeated copy collapsed" : ""}</p></div><span>{table.rows.length} rows</span></div><div className="records-scroll"><table><thead><tr>{table.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{table.columns.map((column) => <td className={!row[column] ? "empty-cell" : ""} key={column}>{row[column] || ""}</td>)}</tr>)}</tbody></table></div></section>) : <p className="empty-state">No tables were reconstructed.</p>}</div> : null}
+        {tab === "review" ? <div className="table-output automatic-output"><ReviewList items={result.review} title="Needs review" /></div> : null}
+      </div>
+    </>
+  );
+}
+
+function LegacyResults({ result }: { result: LegacyExtractionResult }) {
+  const [tab, setTab] = useState<"table" | "json">("table");
+  const records = result.records || [];
+  const columns = records[0] ? Object.keys(records[0]) : [];
+  return <><header className="pane-header results-header"><div className="view-tabs" role="tablist" aria-label="Output views"><button type="button" role="tab" aria-selected={tab === "table"} onClick={() => setTab("table")}>Table</button><button type="button" role="tab" aria-selected={tab === "json"} onClick={() => setTab("json")}>JSON</button></div><p>{records.length ? `${records.length} records` : "1 document"}</p></header><div className="results-scroll">{tab === "json" ? <pre className="json-output">{JSON.stringify(result, null, 2)}</pre> : <div className="table-output"><section><div className="section-heading"><h2>Document fields</h2><span>{Object.keys(result.fields).length}</span></div><dl className="result-fields">{Object.entries(result.fields).map(([key, value]) => <div key={key}><dt>{key}</dt><dd className={display(value) === "Not found" ? "missing" : ""}>{display(value)}</dd></div>)}</dl></section>{records.length ? <section className="records-output"><div className="section-heading"><h2>{result.schema.replaceAll("_", " ")}</h2><span>{records.length} rows</span></div><div className="records-scroll"><table><thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>{records.map((record, index) => <tr key={index}>{columns.map((column) => <td key={column}>{display(record[column])}</td>)}</tr>)}</tbody></table></div></section> : null}</div>}</div></>;
+}
+
+export function Results({ response, visible }: { response: ExtractionResponse; visible: boolean }) {
+  return <section className={`workspace-pane data-pane results-pane ${visible ? "mobile-visible" : ""}`} aria-labelledby="results-heading"><div className={`processing-note ${response.processing.ocr_used ? "ocr" : "native"}`} role="status"><strong>{response.processing.ocr_used ? "OCR processing" : response.processing.mode === "automatic" ? "Automatic processing" : "Native text processing"}</strong><span>{response.processing.note}</span></div>{isAutomatic(response.result) ? <AutomaticResults result={response.result} /> : <LegacyResults result={response.result} />}</section>;
 }

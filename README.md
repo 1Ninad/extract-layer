@@ -1,9 +1,11 @@
-# Generic PDF Schema Extraction
+# Generic PDF Extraction
 
-This project converts digitally-generated PDFs into schema-driven JSON and
-unformatted CSV. LiteParse supplies document text and Docling supplies table
-structure. An OpenRouter model maps the merged Markdown into a user-defined
-schema.
+This project converts digitally-generated PDFs into structured JSON and CSV.
+The web flow automatically maps fields and tables using LiteParse Markdown
+structure plus Docling table and PDF coordinates. Ambiguous relationships stay
+under review, and the automatic flow makes no LLM calls or model-cost charges.
+The original schema-driven OpenRouter flow remains available for compatible
+API and command-line callers.
 
 The extractor preserves printed values. It does not translate, calculate,
 normalize dates, convert units, round numbers, or invent missing values.
@@ -11,8 +13,9 @@ normalize dates, convert units, round numbers, or invent missing values.
 ## Web application
 
 The repository includes a FastAPI backend and a separate Next.js frontend.
-The API calls the same validated LiteParse + Docling + OpenRouter pipeline as
-the command-line runner.
+The API supports automatic extraction when no `schema` form field is sent. A
+schema form field selects the backwards-compatible LiteParse + Docling +
+OpenRouter pipeline.
 
 Run both services from the repository root with one command:
 
@@ -41,9 +44,10 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000`. Upload one PDF (maximum 20 pages), define the
-document and optional repeated-record fields, then select **Extract data**.
-The result can be reviewed as a table or JSON and downloaded as JSON or CSV.
+Open `http://localhost:3000`. Upload one PDF (maximum 20 pages), then select
+**Extract automatically**. The result includes mapped fields, reconstructed
+tables, unlabeled content, and a Review view, and can be downloaded as JSON or
+CSV.
 
 The backend reads `OPENROUTER_API_KEY` and optional `OPENROUTER_MODEL` from the
 root environment or `.env`. `FRONTEND_ORIGINS` controls allowed browser origins.

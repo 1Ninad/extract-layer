@@ -1,4 +1,4 @@
-"""FastAPI adapter around the existing PDF extraction pipeline."""
+"""FastAPI adapter for automatic and schema-driven PDF extraction."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ load_dotenv(ROOT / ".env")
 app = FastAPI(
     title="Document to Database API",
     version="1.0.0",
-    description="Schema-driven extraction from digitally generated PDFs.",
+    description="Deterministic automatic extraction with a compatible schema-driven mode.",
 )
 
 allowed_origins = [
@@ -109,11 +109,41 @@ def _to_csv(result: dict[str, object], schema: ExtractionSchema) -> str:
 def _run_extraction(
     content: bytes,
     filename: str,
-    schema: ExtractionSchema,
+    schema: ExtractionSchema | None,
     model: str,
     use_ocr: bool,
 ) -> tuple[dict[str, object], str, dict[str, object]]:
     """Run native extraction first, then retry the complete pipeline with OCR."""
+
+    if schema is None:
+        if use_ocr:
+            result, csv_content = _run_automatic_extraction_once(content, filename, use_ocr=True)
+            return result, csv_content, {
+                "mode": "automatic_ocr_requested",
+                "ocr_used": True,
+                "note": "Automatic deterministic mapping used OCR-enabled LiteParse and Docling.",
+            }
+        try:
+            result, csv_content = _run_automatic_extraction_once(content, filename, use_ocr=False)
+        except Exception:
+            print("Automatic native extraction failed; retrying with OCR enabled.", flush=True)
+            try:
+                result, csv_content = _run_automatic_extraction_once(content, filename, use_ocr=True)
+            except Exception as ocr_error:
+                raise RuntimeError(
+                    "Automatic native extraction failed, and the OCR fallback also failed: "
+                    f"{ocr_error}"
+                ) from ocr_error
+            return result, csv_content, {
+                "mode": "automatic_ocr_fallback",
+                "ocr_used": True,
+                "note": "Automatic deterministic mapping used OCR after native extraction failed.",
+            }
+        return result, csv_content, {
+            "mode": "automatic",
+            "ocr_used": False,
+            "note": "Automatic deterministic mapping used native text, Markdown structure, and PDF coordinates. No LLM was called.",
+        }
 
     if use_ocr:
         result, csv_content = _run_extraction_once(
@@ -195,6 +225,25 @@ def _run_extraction_once(
         return result, _to_csv(result, schema)
 
 
+def _run_automatic_extraction_once(
+    content: bytes,
+    filename: str,
+    use_ocr: bool,
+) -> tuple[dict[str, object], str]:
+    from .automatic_extraction import extract_automatic
+    from .hybrid_pdf_to_md import build
+
+    with tempfile.TemporaryDirectory(prefix="document-to-database-automatic-") as temp_dir:
+        working_dir = Path(temp_dir)
+        pdf_path = working_dir / Path(filename).name
+        pdf_path.write_bytes(content)
+        markdown_path = build(pdf_path, working_dir / "parsed", None, use_ocr)
+        artifact_path = working_dir / "parsed" / "docling_tables.json"
+        artifacts = json.loads(artifact_path.read_text(encoding="utf-8"))
+        markdown = markdown_path.read_text(encoding="utf-8")
+        return extract_automatic(markdown, artifacts, artifacts.get("tables", []), pdf_path.name)
+
+
 def _validate_native_markdown(markdown: str) -> None:
     """Reject empty or visibly corrupted native text before model extraction."""
 
@@ -231,13 +280,13 @@ def validate_schema(payload: SchemaPayload) -> dict[str, bool]:
 @app.post("/api/extractions")
 async def create_extraction(
     pdf: UploadFile = File(...),
-    schema_json: str = Form(..., alias="schema"),
+    schema_payload: str | None = Form(None, alias="schema"),
     use_ocr: bool = Form(False),
 ) -> dict[str, object]:
     filename = Path(pdf.filename or "document.pdf").name
     content = await pdf.read(MAX_PDF_BYTES + 1)
     page_count = _validate_pdf(content, filename)
-    parsed_schema = _validated_schema(schema_json)
+    parsed_schema = _validated_schema(schema_payload) if schema_payload and schema_payload.strip() else None
     model = os.environ.get("OPENROUTER_MODEL", DEFAULT_MODEL)
     started = time.perf_counter()
 
