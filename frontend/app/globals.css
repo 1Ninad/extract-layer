@@ -33,23 +33,23 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .app-shell { min-height: 100dvh; height: 100dvh; display: flex; overflow: hidden; }
 .app-content { min-width: 0; flex: 1; display: flex; flex-direction: column; }
 .topbar {
-  min-height: 66px;
-  flex: 0 0 66px;
-  padding: 0 24px;
+  min-height: 70px;
+  flex: 0 0 70px;
+  padding: 0 28px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  background: var(--surface);
+  gap: 24px;
+  background: var(--background);
   border-bottom: 1px solid var(--border);
 }
-.product-label { min-width: 0; display: flex; align-items: center; gap: 11px; }
-.product-mark { width: 31px; height: 31px; flex: 0 0 31px; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-strong); border-radius: 5px; }
-.product-mark svg { width: 16px; height: 16px; stroke-width: 1.75; }
-.product-copy { min-width: 0; display: grid; gap: 3px; }
-.product-kicker, .pane-kicker { color: var(--accent); font: 600 10px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
-.product-title { overflow: hidden; color: var(--ink); font-size: 14px; font-weight: 600; letter-spacing: -0.01em; text-overflow: ellipsis; white-space: nowrap; }
-.topbar-actions { padding-left: 16px; display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border); }
+.product-label { min-width: 0; display: flex; align-items: center; gap: 13px; }
+.product-mark { width: 30px; height: 34px; flex: 0 0 30px; display: grid; place-items: center; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-left: 3px solid var(--accent); border-radius: 4px; }
+.product-mark svg { width: 15px; height: 15px; stroke-width: 1.7; }
+.product-copy { min-width: 0; display: grid; gap: 4px; }
+.product-title { overflow: hidden; color: var(--ink); font-size: 15px; font-weight: 650; letter-spacing: -0.025em; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
+.product-subtitle { overflow: hidden; color: var(--muted); font: 11px/1.1 var(--mono); letter-spacing: 0.01em; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-actions { padding-left: 18px; display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border); }
 .primary-button, .secondary-button, .quiet-button {
   min-height: 34px;
   padding: 0 13px;
@@ -261,12 +261,14 @@ input:disabled, textarea:disabled, select:disabled { background: var(--backgroun
 }
 
 @media (max-width: 760px) {
-  .topbar { min-height: 58px; height: 58px; flex-basis: 58px; padding: 0 12px; }
-  .product-label { display: none; }
-  .mobile-tabs { display: flex; padding: 2px; background: var(--background); border: 1px solid var(--border); border-radius: 5px; }
+  .topbar { min-height: 58px; height: 58px; flex-basis: 58px; padding: 0 12px; gap: 10px; }
+  .product-label { display: flex; gap: 0; }
+  .product-mark { width: 28px; height: 30px; flex-basis: 28px; }
+  .product-copy { display: none; }
+  .mobile-tabs { display: flex; margin-left: auto; padding: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; }
   .mobile-tabs button { min-height: 28px; padding: 0 11px; color: var(--muted); background: transparent; border: 0; border-radius: 3px; font-size: 12px; }
   .mobile-tabs button[aria-selected="true"] { color: var(--ink); background: var(--surface); box-shadow: 0 1px 2px rgba(37, 40, 33, 0.08); }
-  .topbar-actions { margin-left: auto; padding-left: 0; border-left: 0; }
+  .topbar-actions { margin-left: 0; padding-left: 0; border-left: 0; }
   .secondary-button { font-size: 0; padding: 0 9px; }
   .secondary-button svg { width: 15px; height: 15px; }
   .main-workspace { display: block; }
