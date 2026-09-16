@@ -2,10 +2,12 @@
 
 This application turns PDFs into structured JSON and CSV.
 
+
 It has two modes:
 
 - **Automatic extraction** finds fields and tables without an LLM.
 - **Schema extraction** uses a user-uploaded JSON schema and an LLM to return only the requested values.
+  - Per-page cost: $0.00015
 
 Values are kept as printed. The application does not translate, calculate,
 round, convert units, or invent missing values.

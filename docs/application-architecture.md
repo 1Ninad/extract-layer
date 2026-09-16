@@ -1,7 +1,7 @@
 # Application architecture
 
 This diagram describes the current PDF-to-structured-data application. It
-uses a top-to-bottom layout so the request path remains readable on a normal
+uses a left-to-right layout so the request path remains readable on a normal
 documentation page. Uploaded PDFs and schemas are processed in memory and in
 temporary working directories; the application does not persist user uploads.
 
