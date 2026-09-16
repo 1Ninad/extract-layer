@@ -15,6 +15,7 @@ The reliable promise should therefore be:
 - Never silently shift a value into the wrong field or table column.
 - Never invent a missing label or value.
 - Preserve explicit empty cells.
+- Preserve every source text block that is not consumed by a mapped field or table.
 - Accept a relationship only when structural evidence is strong.
 - Put uncertain content in Review with its original source context.
 - Use no document-specific field names or layouts.
@@ -119,6 +120,11 @@ There is no universal deterministic way to prove whether the intended split is:
 - Or no field at all
 
 The system must not guess. It preserves the line under Review.
+
+Ordinary prose that is not a field candidate is not sent to Review and is not
+dropped. It is retained as an `unlabeled` content item with its text, kind,
+page, and bounding box. Review is reserved for compact text that could be a
+field but has no unique relationship, or for conflicting field evidence.
 
 An optional LLM may later interpret it, but deterministic v1 must remain honest.
 
@@ -533,4 +539,3 @@ No test or production rule may depend on invoice-specific, certificate-specific,
 - Never guess a separator-free textual boundary without unique structural evidence.
 - Send unresolved cases to Review.
 - Keep the selective LLM fallback disabled by default.
-

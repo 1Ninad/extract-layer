@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -328,9 +329,36 @@ def _same_row(left: TextBlock, right: TextBlock) -> bool:
     return overlap / height >= 0.35 or abs((left.bbox["top"] + left.bbox["bottom"]) / 2 - (right.bbox["top"] + right.bbox["bottom"]) / 2) <= height * 0.8
 
 
+def _looks_like_prose(value: str) -> bool:
+    """Keep ordinary prose out of the ambiguous-field review queue."""
+
+    value = value.strip()
+    if len(value) > 100 or len(_tokens(value)) > 9:
+        return True
+    return bool(re.search(r"[.!?][\"')\]]*$", value))
+
+
+def _unlabeled_item(block: TextBlock) -> dict[str, Any]:
+    if block.label in {"title", "section_header"}:
+        kind = block.label
+    elif _looks_like_prose(block.text):
+        kind = "paragraph"
+    else:
+        kind = "text"
+    return {
+        "kind": kind,
+        "text": block.text,
+        "page": block.page,
+        "bbox": block.bbox,
+        "reason": "Unlabeled source text",
+        "source": {"kind": "coordinates", "page": block.page, "bbox": block.bbox, "label": block.label},
+    }
+
+
 def _coordinate_fields(blocks: list[TextBlock]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     fields: list[dict[str, Any]] = []
     consumed: set[int] = set()
+    review_blocks: set[int] = set()
     for index, label in enumerate(blocks):
         if label.label in {"section_header", "title"} or not _label_candidate(label.text):
             continue
@@ -370,12 +398,18 @@ def _coordinate_fields(blocks: list[TextBlock]) -> tuple[list[dict[str, Any]], l
                     continue
                 candidates.append((0.52 - vertical_gap / max(1, label_height * 30), value_index))
         if not candidates:
-            if label.label not in {"section_header", "title"} and len(_tokens(label.text)) >= 2:
-                fields.append({"review_text": label.text, "page": label.page, "bbox": label.bbox, "reason": "No unique coordinate value"})
+            if (
+                label.label not in {"section_header", "title"}
+                and len(_tokens(label.text)) >= 2
+                and not _looks_like_prose(label.text)
+            ):
+                fields.append({"text": label.text, "page": label.page, "bbox": label.bbox, "reason": "No unique coordinate value"})
+                review_blocks.add(index)
             continue
         candidates.sort(reverse=True)
         if len(candidates) > 1 and abs(candidates[0][0] - candidates[1][0]) < 0.08:
-            fields.append({"review_text": label.text, "page": label.page, "bbox": label.bbox, "reason": "Competing coordinate values"})
+            fields.append({"text": label.text, "page": label.page, "bbox": label.bbox, "reason": "Competing coordinate values"})
+            review_blocks.add(index)
             continue
         value_index = candidates[0][1]
         value = blocks[value_index]
@@ -387,7 +421,11 @@ def _coordinate_fields(blocks: list[TextBlock]) -> tuple[list[dict[str, Any]], l
             "source": {"kind": "coordinates", "page": label.page, "bbox": label.bbox, "value_bbox": value.bbox},
         })
         consumed.update({index, value_index})
-    return fields, [{"text": block.text, "page": block.page, "bbox": block.bbox, "reason": "Unlabeled source text"} for index, block in enumerate(blocks) if index not in consumed and block.label in {"section_header", "title"}]
+    return fields, [
+        _unlabeled_item(block)
+        for index, block in enumerate(blocks)
+        if index not in consumed and index not in review_blocks
+    ]
 
 
 def _reconcile(markdown_fields: list[dict[str, Any]], coordinate_fields: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -422,7 +460,7 @@ def _reconcile(markdown_fields: list[dict[str, Any]], coordinate_fields: list[di
         for index, field in enumerate(coordinate_fields)
         if index not in used_coordinates and "label" in field
     )
-    review.extend(field for field in coordinate_fields if "review_text" in field)
+    review.extend(field for field in coordinate_fields if "text" in field)
     return accepted, review
 
 
@@ -434,6 +472,20 @@ def _field_pages(field: dict[str, Any]) -> list[int]:
     if isinstance(page, int):
         result.append(page)
     return sorted(set(result))
+
+
+def _matches_mapped_field_source(text: str, fields: list[dict[str, Any]]) -> bool:
+    normalized_text = _normal(text)
+    if not normalized_text:
+        return False
+    for field in fields:
+        label = _normal(str(field.get("label", "")))
+        value = _normal(str(field.get("value", "")))
+        if normalized_text == label or (value and normalized_text == value):
+            return True
+        if label and value and label in normalized_text and value in normalized_text:
+            return True
+    return False
 
 
 def _dedupe_fields(fields: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
@@ -615,13 +667,21 @@ def extract_automatic(markdown: str, raw_document: dict[str, Any], table_records
     fields, consumed_coordinate_texts = _merge_value_continuations(fields, blocks)
     fields, field_duplicates = _dedupe_fields(fields)
     accepted_labels = {_normal(str(field.get("label", ""))) for field in fields if field.get("label")}
-    unlabeled = [item for item in unlabeled if _normal(str(item.get("text", ""))) not in accepted_labels]
+    unlabeled = [
+        item
+        for item in unlabeled
+        if _normal(str(item.get("text", ""))) not in accepted_labels
+        and not _matches_mapped_field_source(str(item.get("text", "")), fields)
+    ]
     review = [
         item
         for item in review
         if not (
-            item.get("review_text")
-            and _normal(str(item["review_text"])) in (accepted_labels | consumed_coordinate_texts)
+            item.get("text")
+            and (
+                _normal(str(item["text"])) in (accepted_labels | consumed_coordinate_texts)
+                or _matches_mapped_field_source(str(item["text"]), fields)
+            )
         )
     ]
     tables = _table_output(table_records)
@@ -658,14 +718,18 @@ def automatic_csv(result: dict[str, Any]) -> str:
         for column in table.get("columns", []):
             if column not in table_columns:
                 table_columns.append(column)
-    columns = ["source_file", *field_names, *table_columns]
+    columns = ["source_file", *field_names, *table_columns, "unlabeled_content", "review_content"]
     rows: list[dict[str, str]] = []
     tables = result.get("tables", [])
+    unlabeled_content = json.dumps(result.get("unlabeled", []), ensure_ascii=False, separators=(",", ":"))
+    review_content = json.dumps(result.get("review", []), ensure_ascii=False, separators=(",", ":"))
     if tables:
         for table in tables:
             for table_row in table.get("rows", []):
                 row = {column: "" for column in columns}
                 row["source_file"] = str(result.get("source_file", ""))
+                row["unlabeled_content"] = unlabeled_content
+                row["review_content"] = review_content
                 for index, field in enumerate(fields):
                     row[field_names[index]] = str(field.get("value", ""))
                 for column in table_columns:
@@ -674,6 +738,8 @@ def automatic_csv(result: dict[str, Any]) -> str:
     else:
         row = {column: "" for column in columns}
         row["source_file"] = str(result.get("source_file", ""))
+        row["unlabeled_content"] = unlabeled_content
+        row["review_content"] = review_content
         for index, field in enumerate(fields):
             row[field_names[index]] = str(field.get("value", ""))
         rows.append(row)

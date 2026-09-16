@@ -58,6 +58,7 @@ export type AutomaticTable = {
 };
 
 export type AutomaticReviewItem = {
+  kind?: "title" | "section_header" | "paragraph" | "text";
   label?: string;
   value?: string;
   text?: string;

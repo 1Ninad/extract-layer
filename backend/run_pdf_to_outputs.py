@@ -32,7 +32,7 @@ MAX_EXTRACTION_ATTEMPTS = 3
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", type=Path, help="One PDF to process")
-    parser.add_argument("--schema", type=Path, help="TOML extraction schema")
+    parser.add_argument("--schema", type=Path, help="JSON or TOML extraction schema")
     parser.add_argument("--init-schema", type=Path, help="Create a TOML schema interactively and exit")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--input-dir", type=Path, default=DEFAULT_INPUT_DIR)
@@ -111,7 +111,11 @@ def run(args: argparse.Namespace) -> tuple[Path, Path]:
         raise SystemExit(0)
 
     schema_path = (args.schema or DEFAULT_SCHEMA).resolve()
-    schema = ExtractionSchema.from_toml(schema_path)
+    schema = (
+        ExtractionSchema.from_json(schema_path)
+        if schema_path.suffix.lower() == ".json"
+        else ExtractionSchema.from_toml(schema_path)
+    )
     pdf_path = select_pdf(args.pdf, args.input_dir.resolve())
     api_key = args.api_key or os.environ.get("OPENROUTER_API_KEY")
     if not api_key:

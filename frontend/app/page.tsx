@@ -14,7 +14,7 @@ import type { ExtractionMode, ExtractionResponse, SchemaUploadState } from "@/li
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type ExamplePayload = { filename: string; pdf_url: string };
+type ExamplePayload = { filename: string; pdf_url: string; schema: unknown };
 type SetupStep = "mode" | "schema";
 
 export default function Home() {
@@ -26,6 +26,7 @@ export default function Home() {
   const [schemaValidating, setSchemaValidating] = useState(false);
   const [exampleLoading, setExampleLoading] = useState(false);
   const [demo, setDemo] = useState(false);
+  const [exampleQuickTry, setExampleQuickTry] = useState(false);
   const [mode, setMode] = useState<ExtractionMode | null>(null);
   const [setupStep, setSetupStep] = useState<SetupStep>("mode");
   const [schemaUpload, setSchemaUpload] = useState<SchemaUploadState | null>(null);
@@ -48,9 +49,13 @@ export default function Home() {
       const pdfResponse = await fetch(config.pdf_url);
       if (!pdfResponse.ok) throw new Error("Could not load the example PDF.");
       const pdf = await pdfResponse.blob();
+      const exampleSchemaFile = new File([JSON.stringify(config.schema)], "input.json", { type: "application/json" });
+      const parsedSchema = await readSchemaFile(exampleSchemaFile);
       setFile(new File([pdf], config.filename, { type: "application/pdf" }));
+      setSchemaUpload(parsedSchema);
       setResponse(null);
       setDemo(false);
+      setExampleQuickTry(true);
       setMode(null);
       setSetupStep("mode");
       setMobileView("data");
@@ -89,6 +94,7 @@ export default function Home() {
     setMode(nextMode);
     setError("");
     if (nextMode === "automatic") setSetupStep("mode");
+    if (exampleQuickTry) void extract(nextMode);
   }
 
   function continueSetup() {
@@ -100,16 +106,17 @@ export default function Home() {
     void extract();
   }
 
-  async function extract() {
+  async function extract(modeOverride?: ExtractionMode) {
     if (!file) {
       setError("Add a PDF before extracting.");
       return;
     }
-    if (!mode) {
+    const selectedMode = modeOverride || mode;
+    if (!selectedMode) {
       setError("Choose an extraction mode first.");
       return;
     }
-    if (mode === "schema" && !schemaUpload) {
+    if (selectedMode === "schema" && !schemaUpload) {
       setSetupStep("schema");
       return;
     }
@@ -119,7 +126,7 @@ export default function Home() {
     try {
       const form = new FormData();
       form.append("pdf", file);
-      if (mode === "schema" && schemaUpload) form.append("schema", schemaUpload.raw);
+      if (selectedMode === "schema" && schemaUpload) form.append("schema", schemaUpload.raw);
       const result = await fetch(`${API_URL}/api/extractions`, { method: "POST", body: form });
       const payload = await result.json();
       if (!result.ok) throw new Error(typeof payload.detail === "string" ? payload.detail : "Extraction failed.");
@@ -136,6 +143,7 @@ export default function Home() {
     setFile(next);
     setResponse(null);
     setDemo(false);
+    setExampleQuickTry(false);
     setError("");
     setSchemaError("");
     setSetupStep("mode");
@@ -150,6 +158,7 @@ export default function Home() {
     setSchemaError("");
     setError("");
     setDemo(false);
+    setExampleQuickTry(false);
     setSetupStep("mode");
     setMobileView("document");
   }

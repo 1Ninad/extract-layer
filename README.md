@@ -111,18 +111,18 @@ type, and distinguishing description. Supported types are `text`, `number`,
 nested objects, which is useful for tables.
 
 The example input in this repository is `examples/input.pdf`, with its
-reusable extraction schema in `examples/input.toml`. Run it with:
+reusable extraction schema in `examples/input.json`. Run it with:
 
 ```bash
 .venv/bin/python -m backend.run_pdf_to_outputs \
   --pdf examples/input.pdf \
-  --schema examples/input.toml \
+  --schema examples/input.json \
   --output-dir examples \
   --save-markdown \
   --flat-output
 ```
 
-This reads `examples/input.pdf` using `examples/input.toml` and writes:
+This reads `examples/input.pdf` using `examples/input.json` and writes:
 
 ```text
 examples/input_output.json
@@ -209,7 +209,9 @@ Output filenames use the input PDF stem with `_output` appended. For example,
 JSON keeps document fields and records separate. CSV is flattened: document
 mode produces one row, while records mode produces one row per record and
 repeats document-level fields. Arrays are stored as compact JSON strings in
-CSV cells. Every CSV includes `source_file` for provenance.
+CSV cells. Automatic-mode CSV also includes `unlabeled_content` and
+`review_content` JSON columns so paragraphs and unresolved source text are not
+lost when exporting. Every CSV includes `source_file` for provenance.
 
 The runner treats the LLM response as a candidate location, not as the final
 value. Exact matches are accepted directly. When the model adds harmless

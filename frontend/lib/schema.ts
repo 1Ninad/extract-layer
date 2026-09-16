@@ -41,12 +41,16 @@ export function parseSchema(raw: unknown): SchemaDefinition {
     fields: parseFields(raw.fields, "fields"),
   };
 
-  if (raw.table !== undefined) {
-    if (!isObject(raw.table)) throw new Error("table must be an object.");
+  const rawTable = raw.table ?? raw.records;
+  if (raw.table !== undefined && raw.records !== undefined) {
+    throw new Error("schema cannot define both table and records.");
+  }
+  if (rawTable !== undefined) {
+    if (!isObject(rawTable)) throw new Error("table or records must be an object.");
     schema.table = {
-      name: requireText(raw.table.name, "table.name"),
-      description: requireText(raw.table.description, "table.description"),
-      fields: parseFields(raw.table.fields, "table.fields"),
+      name: requireText(rawTable.name, "table.name"),
+      description: requireText(rawTable.description, "table.description"),
+      fields: parseFields(rawTable.fields, "table.fields"),
     };
   }
 

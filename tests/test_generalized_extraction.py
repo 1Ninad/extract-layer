@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 from backend.extraction_schema import ExtractionSchema, FieldSpec, RecordSpec, write_toml
+from backend.automatic_extraction import TextBlock, _coordinate_fields, extract_automatic
 from backend.hybrid_pdf_to_md import merge_markdown
 from backend.run_pdf_to_outputs import extract_result, select_pdf, write_outputs
 from backend.schema_extractor import (
@@ -169,6 +170,82 @@ class SchemaTests(unittest.TestCase):
 
 
 class ExtractionTests(unittest.TestCase):
+    @staticmethod
+    def _block(text: str, label: str = "text", top: float = 10) -> TextBlock:
+        return TextBlock(
+            text,
+            1,
+            {"left": 10, "top": top, "right": 500, "bottom": top + 14},
+            label,
+            "test",
+        )
+
+    def test_unpaired_prose_is_preserved_as_unlabeled_content(self) -> None:
+        fields, unlabeled = _coordinate_fields(
+            [self._block("This is an explanatory paragraph.")]
+        )
+        self.assertEqual(fields, [])
+        self.assertEqual(unlabeled[0]["kind"], "paragraph")
+        self.assertEqual(unlabeled[0]["text"], "This is an explanatory paragraph.")
+
+    def test_long_unpaired_prose_is_not_dropped(self) -> None:
+        paragraph = "This paragraph contains enough ordinary words to exceed the compact field candidate limit and must remain available to the caller."
+        fields, unlabeled = _coordinate_fields([self._block(paragraph)])
+        self.assertEqual(fields, [])
+        self.assertEqual(unlabeled[0]["text"], paragraph)
+
+    def test_ambiguous_compact_text_remains_in_review(self) -> None:
+        fields, unlabeled = _coordinate_fields([self._block("Customer United States")])
+        self.assertEqual(unlabeled, [])
+        self.assertEqual(fields[0]["text"], "Customer United States")
+
+    def test_automatic_output_preserves_unlabeled_and_review_content(self) -> None:
+        paragraph = "This is an explanatory paragraph."
+        result, csv_content = extract_automatic(
+            paragraph + "\nCustomer United States\n",
+            {
+                "pages": {"1": {"page_no": 1, "size": {"width": 600, "height": 800}}},
+                "texts": [
+                    {
+                        "text": paragraph,
+                        "label": "text",
+                        "prov": [{"page_no": 1, "bbox": {"l": 10, "r": 500, "t": 10, "b": 24}}],
+                    },
+                    {
+                        "text": "Customer United States",
+                        "label": "text",
+                        "prov": [{"page_no": 1, "bbox": {"l": 10, "r": 220, "t": 40, "b": 54}}],
+                    },
+                ],
+            },
+            [],
+            "example.pdf",
+        )
+        self.assertEqual(result["unlabeled"][0]["text"], paragraph)
+        self.assertEqual(result["review"][0]["text"], "Customer United States")
+        self.assertIn("unlabeled_content", csv_content.splitlines()[0])
+        self.assertIn(paragraph, csv_content)
+
+    def test_mapped_markdown_line_is_not_repeated_as_unlabeled_content(self) -> None:
+        result, _ = extract_automatic(
+            "Invoice No: INV-42\n",
+            {
+                "pages": {"1": {"page_no": 1, "size": {"width": 600, "height": 800}}},
+                "texts": [
+                    {
+                        "text": "Invoice No: INV-42",
+                        "label": "text",
+                        "prov": [{"page_no": 1, "bbox": {"l": 10, "r": 220, "t": 10, "b": 24}}],
+                    }
+                ],
+            },
+            [],
+            "example.pdf",
+        )
+        self.assertEqual(result["fields"][0]["value"], "INV-42")
+        self.assertEqual(result["unlabeled"], [])
+        self.assertEqual(result["review"], [])
+
     def test_dynamic_json_schema_contains_configured_fields_and_records(self) -> None:
         generated = json_schema(record_schema())["schema"]
         self.assertEqual(generated["required"], ["fields", "records"])

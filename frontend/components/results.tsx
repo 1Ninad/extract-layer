@@ -13,11 +13,11 @@ function display(value: unknown): string {
   return typeof value === "object" ? JSON.stringify(value) : String(value);
 }
 
-function ReviewList({ items, title }: { items: AutomaticReviewItem[]; title: string }) {
+function ReviewList({ items, title, emptyText = "Nothing needs review." }: { items: AutomaticReviewItem[]; title: string; emptyText?: string }) {
   return (
     <section className="review-section">
       <div className="section-heading"><h2>{title}</h2><span>{items.length}</span></div>
-      {items.length ? <div className="review-list">{items.map((item, index) => <article key={`${item.page || 0}-${index}`}><strong>{item.label || item.text || "Source content"}</strong>{item.value ? <span>{item.value}</span> : null}{item.markdown ? <span>{item.markdown}</span> : null}<small>{item.reason}{item.page ? ` · page ${item.page}` : ""}</small></article>)}</div> : <p className="empty-state">Nothing needs review.</p>}
+      {items.length ? <div className="review-list">{items.map((item, index) => <article key={`${item.page || 0}-${index}`}><strong>{item.label || item.text || "Source content"}</strong>{item.value ? <span>{item.value}</span> : null}{item.markdown ? <span>{item.markdown}</span> : null}<small>{item.reason}{item.page ? ` · page ${item.page}` : ""}</small></article>)}</div> : <p className="empty-state">{emptyText}</p>}
     </section>
   );
 }
@@ -61,7 +61,7 @@ function AutomaticResults({ result, processing }: { result: AutomaticExtractionR
       </header>
       <div className="results-scroll">
         {tab === "json" ? <pre className="json-output">{JSON.stringify(result, null, 2)}</pre> : null}
-        {tab === "overview" ? <div className="table-output automatic-output"><section><div className="section-heading"><h2>Mapped fields</h2><span>{result.fields.length}</span></div><dl className="result-fields automatic-fields">{result.fields.map((field, index) => <div key={`${field.label}-${index}`}><dt>{field.label}</dt><dd className={field.status === "empty" ? "missing" : ""}>{field.status === "empty" ? "Explicitly blank" : field.value}</dd></div>)}</dl></section><ReviewList items={result.unlabeled} title="Unlabeled content" /></div> : null}
+        {tab === "overview" ? <div className="table-output automatic-output"><section><div className="section-heading"><h2>Mapped fields</h2><span>{result.fields.length}</span></div><dl className="result-fields automatic-fields">{result.fields.map((field, index) => <div key={`${field.label}-${index}`}><dt>{field.label}</dt><dd className={field.status === "empty" ? "missing" : ""}>{field.status === "empty" ? "Explicitly blank" : field.value}</dd></div>)}</dl></section><ReviewList items={result.unlabeled} title="Unlabeled content" emptyText="No unlabeled content found." /></div> : null}
         {tab === "tables" ? <div className="table-output automatic-output">{result.tables.length ? result.tables.map((table) => <section className="automatic-table" key={table.id}><div className="section-heading"><div><h2>{table.name}</h2><p>Page{table.pages.length === 1 ? "" : "s"} {table.pages.join(", ") || "unknown"}{table.duplicate_pages?.length ? " · repeated copy collapsed" : ""}</p></div><span>{table.rows.length} rows</span></div><div className="records-scroll"><table><thead><tr>{table.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{table.columns.map((column) => <td className={!row[column] ? "empty-cell" : ""} key={column}>{row[column] || ""}</td>)}</tr>)}</tbody></table></div></section>) : <p className="empty-state">No tables were reconstructed.</p>}</div> : null}
         {tab === "review" ? <div className="table-output automatic-output"><ReviewList items={result.review} title="Needs review" /></div> : null}
       </div>

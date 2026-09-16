@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Human-authored TOML schemas for generic PDF extraction."""
+"""Human-authored JSON and TOML schemas for generic PDF extraction."""
 
 from __future__ import annotations
 
@@ -125,6 +125,18 @@ class ExtractionSchema:
             raise ValueError(f"Schema file not found: {path}") from exc
         except tomllib.TOMLDecodeError as exc:
             raise ValueError(f"Invalid TOML schema {path}: {exc}") from exc
+        schema = cls.from_mapping(raw)
+        schema.validate()
+        return schema
+
+    @classmethod
+    def from_json(cls, path: Path) -> "ExtractionSchema":
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except FileNotFoundError as exc:
+            raise ValueError(f"Schema file not found: {path}") from exc
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON schema {path}: {exc}") from exc
         schema = cls.from_mapping(raw)
         schema.validate()
         return schema
