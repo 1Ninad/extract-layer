@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "name": "single_quality_record",
+  "description": "Extract the printed document values and result rows in source order.",
+  "output_mode": "records",
+  "fields": [
+    {"name": "issuer_a", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "party_a", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "place_a", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "certificate_a", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "date_a", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "reference_a", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "reference_b", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "reference_c", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "reference_d", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "material_a", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "batch_a", "type": "text", "description": "Printed value associated with this field."}
+  ],
+  "records": {
+    "name": "result_rows",
+    "description": "One record for each result row, preserving source order.",
+    "fields": [
+      {"name": "metric_a", "type": "text", "description": "Printed value associated with this row."},
+      {"name": "unit_a", "type": "text", "description": "Printed value associated with this row."},
+      {"name": "value_a", "type": "text", "description": "Printed value associated with this row."},
+      {"name": "lower_a", "type": "text", "description": "Printed value associated with this row."},
+      {"name": "upper_a", "type": "text", "description": "Printed value associated with this row."},
+      {"name": "method_a", "type": "text", "description": "Printed value associated with this row."}
+    ]
+  }
+}

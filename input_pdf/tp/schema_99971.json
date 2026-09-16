@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "name": "shipment_analysis",
+  "description": "Extract the requested printed values and all rows from the document tables.",
+  "output_mode": "records",
+  "fields": [
+    {"name": "party_a", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "place_a", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "reference_a", "type": "text", "description": "Printed value associated with this field."},
+    {"name": "reference_b", "type": "text", "description": "Printed value associated with this field."}
+  ],
+  "records": {
+    "name": "analysis_rows",
+    "description": "One record for each row in the tables on both pages, preserving source order.",
+    "fields": [
+      {"name": "sheet_a", "type": "text", "description": "Printed page indicator for this row."},
+      {"name": "batch_a", "type": "text", "description": "Printed value associated with this row."},
+      {"name": "metric_a", "type": "text", "description": "Printed value associated with this row."},
+      {"name": "unit_a", "type": "text", "description": "Printed value associated with this row."},
+      {"name": "value_a", "type": "text", "description": "Printed value associated with this row."},
+      {"name": "range_a", "type": "text", "description": "Printed value associated with this row."},
+      {"name": "method_a", "type": "text", "description": "Printed value associated with this row."}
+    ]
+  }
+}

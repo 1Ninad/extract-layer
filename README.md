@@ -44,7 +44,9 @@ After uploading a PDF, choose **Use a JSON schema** and upload a `.json` file.
 The file is read in the browser, validated locally and by the backend, and is
 not stored on the server.
 
-The simple schema format has document fields and one optional repeated table:
+The simple schema format has document fields and one optional repeated table.
+The repeated collection may be named `table` or `records`; rows can span
+multiple table sections or continuation pages while preserving source order:
 
 ```json
 {
@@ -55,7 +57,7 @@ The simple schema format has document fields and one optional repeated table:
     {"name": "invoice_number", "description": "The printed invoice number."},
     {"name": "invoice_date", "description": "The printed invoice date."}
   ],
-  "table": {
+  "records": {
     "name": "line_items",
     "description": "Each product or service row.",
     "fields": [

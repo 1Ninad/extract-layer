@@ -32,6 +32,13 @@ The editable diagram source is
    the response contract, and converted to CSV. The API returns JSON, CSV,
    page-count, timing, and processing metadata for the review and export UI.
 
+### Schema contract
+
+Schema uploads define document fields and may define one repeated `table` or
+`records` collection. Each collection can represent rows from multiple table
+sections or continuation pages; source order and any declared context fields
+are retained so rows remain associated with the correct section.
+
 ## Components and responsibilities
 
 | Component | Responsibility | Current implementation boundary |
@@ -53,6 +60,10 @@ The editable diagram source is
 - **Bounded model input:** the external model receives the schema and compact
   extracted candidates, not the original PDF or complete Markdown. Page and
   source-line order retain the context needed to align repeated table groups.
+- **Schema portability:** field names are user-defined aliases, while the
+  processed source supplies the labels and table geometry needed to map them.
+  This lets the same extraction path handle differently labeled certificates
+  without coupling the application to one document layout.
 - **Evidence reconciliation:** the automatic path combines Markdown structure
   with Docling table geometry and coordinates. Low-confidence relationships,
   duplicate content, and unlabeled source text remain visible for review

@@ -19,9 +19,9 @@
 <!-- upload -->
 <g id="node2" class="node">
 <title>upload</title>
-<path fill="#e9f3ff" stroke="#8090aa" stroke-width="1.2" d="M478.91,-867.05C478.91,-867.05 390.62,-867.05 390.62,-867.05 384.62,-867.05 378.62,-861.05 378.62,-855.05 378.62,-855.05 378.62,-840.65 378.62,-840.65 378.62,-834.65 384.62,-828.65 390.62,-828.65 390.62,-828.65 478.91,-828.65 478.91,-828.65 484.91,-828.65 490.91,-834.65 490.91,-840.65 490.91,-840.65 490.91,-855.05 490.91,-855.05 490.91,-861.05 484.91,-867.05 478.91,-867.05"/>
+<path fill="#e9f3ff" stroke="#8090aa" stroke-width="1.2" d="M488.29,-867.05C488.29,-867.05 381.25,-867.05 381.25,-867.05 375.25,-867.05 369.25,-861.05 369.25,-855.05 369.25,-855.05 369.25,-840.65 369.25,-840.65 369.25,-834.65 375.25,-828.65 381.25,-828.65 381.25,-828.65 488.29,-828.65 488.29,-828.65 494.29,-828.65 500.29,-834.65 500.29,-840.65 500.29,-840.65 500.29,-855.05 500.29,-855.05 500.29,-861.05 494.29,-867.05 488.29,-867.05"/>
 <text xml:space="preserve" text-anchor="middle" x="434.77" y="-849.4" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#172033">UI</text>
-<text xml:space="preserve" text-anchor="middle" x="434.77" y="-837.4" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#172033">upload + configure</text>
+<text xml:space="preserve" text-anchor="middle" x="434.77" y="-837.4" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#172033">upload PDF + schema</text>
 </g>
 <!-- user&#45;&gt;upload -->
 <g id="edge1" class="edge">
@@ -115,7 +115,7 @@
 <title>candidates</title>
 <polygon fill="#f2ecff" stroke="#8090aa" stroke-width="1.2" points="490.18,-359.75 238.19,-359.75 173.36,-282.95 425.35,-282.95 490.18,-359.75"/>
 <text xml:space="preserve" text-anchor="middle" x="331.77" y="-322.9" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#172033">Compact schema evidence</text>
-<text xml:space="preserve" text-anchor="middle" x="331.77" y="-310.9" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#172033">fields + table rows</text>
+<text xml:space="preserve" text-anchor="middle" x="331.77" y="-310.9" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#172033">fields + repeated rows</text>
 </g>
 <!-- mode&#45;&gt;candidates -->
 <g id="edge7" class="edge">
