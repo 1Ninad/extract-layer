@@ -7,37 +7,37 @@
     {
       "name": "company_name",
       "type": "text",
-      "description": "Company name: the issuing company shown in the certificate header or footer, not the recipient or packaging-group name."
+      "description": "Company name: the issuing company shown in the certificate header or footer"
     },
     {
       "name": "country",
       "type": "text",
-      "description": "Country: the country in the issuing company's address or footer, not the state or city."
+      "description": "Country: the country in the issuing company's address"
     },
     {
       "name": "reference_code",
       "type": "text",
-      "description": "Reference Code: the exact value printed next to Certificate No.; do not use the order, shipment, customer, or invoice number."
+      "description": "Reference Code"
     },
     {
       "name": "issued_on",
       "type": "date",
-      "description": "Issued On: the exact date printed next to Issue Date, preserving the source formatting."
+      "description": "date of issue"
     },
     {
       "name": "order_number",
       "type": "text",
-      "description": "Order Number: the complete exact value printed next to Order Ref., including any date after a slash; do not use a batch, shipment, customer, or invoice number."
+      "description": "Order Number"
     },
     {
       "name": "consignment_number",
       "type": "text",
-      "description": "Consignment Number: the complete exact value printed next to Shipment Ref., including any date after a slash; do not use the order or customer number."
+      "description": "Consignment Number"
     },
     {
       "name": "client_id",
       "type": "text",
-      "description": "Client ID: the exact value printed next to Customer Code."
+      "description": "Client ID"
     }
   ],
   "records": {
@@ -47,22 +47,22 @@
       {
         "name": "lot_number",
         "type": "text",
-        "description": "Lot Number: the exact value immediately following Batch (Lot) for the batch containing this characteristic row; do not include the expiry date, quantity, or manufacture date."
+        "description": "Lot Number: the exact value immediately following Batch for the batch containing this characteristic row."
       },
       {
         "name": "characteristic",
         "type": "text",
-        "description": "Characteristic: the exact text from the Property column for this row, such as Melt Flow Index (190C/2.16kg), Density, or Contamination (Fluorescence)."
+        "description": "Characteristic."
       },
       {
         "name": "unit",
         "type": "text",
-        "description": "Unit: the exact value from the Unit column for this characteristic row."
+        "description": "Unit."
       },
       {
         "name": "result",
         "type": "text",
-        "description": "Result: the exact value from the Result column for this characteristic row, including comparison symbols, spaces, punctuation, and trailing zeroes; never substitute Min or Max."
+        "description": "Result: the exact value from the Result column for this characteristic row, including comparison symbols, spaces, punctuation, and trailing zeroes."
       },
       {
         "name": "test_method",
