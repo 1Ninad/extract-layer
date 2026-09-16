@@ -9,13 +9,13 @@ export const exampleSchema = {
       name: "company_name",
       type: "text",
       description:
-        "Company name: the issuing company shown in the certificate header or footer (for example, Contoso Polymers), not the recipient or packaging-group name.",
+        "Company name: the issuing company shown in the certificate header or footer, not the recipient or packaging-group name.",
     },
     {
       name: "country",
       type: "text",
       description:
-        "Country: the country in the issuing company's address or footer (for example, United States), not the state or city.",
+        "Country: the country in the issuing company's address or footer, not the state or city.",
     },
     {
       name: "reference_code",

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon, FileTextIcon, LightningBoltIcon } from "@radix-ui/react-icons";
+import { ArrowRightIcon, FileTextIcon, LightningBoltIcon } from "@/components/icons";
 import type { ExtractionMode } from "@/lib/types";
 
 type Props = {
@@ -14,7 +14,7 @@ type Props = {
 export function ExtractionModeChooser({ selected, visible, hasSchema, onSelect, onContinue }: Props) {
   return (
     <section className={`workspace-pane data-pane mode-pane ${visible ? "mobile-visible" : ""}`} aria-labelledby="mode-heading">
-      <header className="pane-header"><div><span className="pane-kicker">Extraction mode</span><h2 id="mode-heading">Choose how to read this PDF</h2><p>Use automatic mapping or provide the exact fields you need.</p></div></header>
+      <header className="pane-header workspace-pane-header"><div><span className="pane-kicker">Extraction mode</span><h2 id="mode-heading">Choose how to extract</h2></div></header>
       <div className="mode-content">
         <div className="mode-options" role="radiogroup" aria-label="Extraction mode">
           <button type="button" className={`mode-option ${selected === "automatic" ? "selected" : ""}`} role="radio" aria-checked={selected === "automatic"} onClick={() => onSelect("automatic")}>

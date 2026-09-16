@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftIcon, CheckCircledIcon, DownloadIcon, FileTextIcon, UploadIcon } from "@radix-ui/react-icons";
+import { ArrowLeftIcon, CheckCircledIcon, DownloadIcon, FileTextIcon, UploadIcon } from "@/components/icons";
 import { useRef, useState } from "react";
 import { downloadFile } from "@/lib/download";
 import { exampleSchema, schemaSummary } from "@/lib/schema";
@@ -32,9 +32,9 @@ export function SchemaUpload({ schema, fileName, error, validating, visible, onF
 
   return (
     <section className={`workspace-pane data-pane schema-upload-pane ${visible ? "mobile-visible" : ""}`} aria-labelledby="schema-upload-heading">
-      <header className="pane-header schema-upload-header">
+      <header className="pane-header schema-upload-header workspace-pane-header">
         <button className="quiet-button back-button" type="button" onClick={onBack}><ArrowLeftIcon aria-hidden="true" /> Back</button>
-        <div><span className="pane-kicker">Schema mode</span><h2 id="schema-upload-heading">Upload your JSON schema</h2><p>Tell the extractor which values and table rows to return.</p></div>
+        <div><span className="pane-kicker">Schema mode</span><h2 id="schema-upload-heading">Upload your JSON schema</h2></div>
       </header>
       <div className="schema-upload-content">
         <input ref={inputRef} type="file" accept="application/json,.json" hidden onChange={(event) => { choose(event.target.files?.[0]); event.currentTarget.value = ""; }} />

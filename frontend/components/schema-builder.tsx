@@ -1,4 +1,4 @@
-import { Cross2Icon, PlusIcon } from "@radix-ui/react-icons";
+import { Cross2Icon, PlusIcon } from "@/components/icons";
 import type { FieldDefinition } from "@/lib/types";
 
 type Props = {

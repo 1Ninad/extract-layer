@@ -24,3 +24,4 @@ frontend/*.tsbuildinfo
 .DS_Store
 
 AGENTS.md
+DESIGN.md

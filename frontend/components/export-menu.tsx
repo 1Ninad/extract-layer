@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDownIcon, DownloadIcon } from "@radix-ui/react-icons";
+import { ChevronDownIcon, DownloadIcon } from "@/components/icons";
 import { useEffect, useRef, useState } from "react";
 import { downloadFile } from "@/lib/download";
 import type { ExtractionResponse } from "@/lib/types";

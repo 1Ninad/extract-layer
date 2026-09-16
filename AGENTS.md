@@ -3,7 +3,6 @@
 - Keep code simple, reusable, and any specific PDF-agnostic. Do not hardcode one document's layout or fields.
 - Keep comments short, clear, precise, and natural. Add them only when they explain important or non-obvious logic.
 - Keep the frontend usable on both mobile and desktop.
-- Do not open Broser/Chrome app for testing.
 - Before Git/GitHub push, update README.md file & AGENTS.md's Repository Map section (if any changes required)/
 - Commit message should be within 8 words. Should be simple, easy to understand quickly, clear, crisp, precise, natural, and by real human.
 - I like clean, minimalist, rich, tech. enterprise-ready frontend.

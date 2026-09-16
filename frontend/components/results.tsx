@@ -1,7 +1,7 @@
 "use client";
 
+import { ChevronDownIcon, InfoCircledIcon } from "@/components/icons";
 import { useState } from "react";
-import { ChevronDown, Info } from "lucide-react";
 import type { AutomaticExtractionResult, AutomaticReviewItem, ExtractionResponse, LegacyExtractionResult } from "@/lib/types";
 
 function isAutomatic(result: ExtractionResponse["result"]): result is AutomaticExtractionResult {
@@ -36,9 +36,9 @@ function MethodDetails({ processing, showMapping }: { processing: ExtractionResp
         aria-controls={contentId}
         onClick={() => setOpen((current) => !current)}
       >
-        <Info aria-hidden="true" />
+        <InfoCircledIcon aria-hidden="true" />
         <span>Method details</span>
-        <ChevronDown aria-hidden="true" />
+        <ChevronDownIcon aria-hidden="true" />
       </button>
       {open ? <div className="method-details-panel" id={contentId} role="status">
         <div className="method-details-item"><strong>{processingLabel}</strong><span>{processing.note}</span></div>
@@ -53,7 +53,7 @@ function AutomaticResults({ result, processing }: { result: AutomaticExtractionR
   const reviewCount = result.review.length;
   return (
     <>
-      <header className="pane-header results-header">
+      <header className="pane-header results-header workspace-pane-header">
         <div className="view-tabs" role="tablist" aria-label="Output views">
           {(["overview", "tables", "review", "json"] as const).map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => setTab(item)}>{item === "overview" ? "Overview" : item[0].toUpperCase() + item.slice(1)}{item === "review" && reviewCount ? ` (${reviewCount})` : ""}</button>)}
         </div>
@@ -74,9 +74,9 @@ function LegacyResults({ result, processing }: { result: LegacyExtractionResult;
   const records = result.table?.rows || result.records || [];
   const columns = result.table?.columns || (records[0] ? Object.keys(records[0]) : []);
   const tableName = result.table?.name || result.schema.replaceAll("_", " ");
-  return <><header className="pane-header results-header"><div className="view-tabs" role="tablist" aria-label="Output views"><button type="button" role="tab" aria-selected={tab === "table"} onClick={() => setTab("table")}>Table</button><button type="button" role="tab" aria-selected={tab === "json"} onClick={() => setTab("json")}>JSON</button></div><div className="results-header-meta"><p>{records.length ? `${records.length} rows` : result.table ? "0 rows" : "1 document"}</p><MethodDetails processing={processing} showMapping={false} /></div></header><div className="results-scroll">{tab === "json" ? <pre className="json-output">{JSON.stringify(result, null, 2)}</pre> : <div className="table-output"><section><div className="section-heading"><h2>Document fields</h2><span>{Object.keys(result.fields).length}</span></div><dl className="result-fields">{Object.entries(result.fields).map(([key, value]) => <div key={key}><dt>{key}</dt><dd className={display(value) === "Not found" ? "missing" : ""}>{display(value)}</dd></div>)}</dl></section>{result.table || records.length ? <section className="records-output"><div className="section-heading"><div><h2>{tableName}</h2>{result.table?.description ? <p>{result.table.description}</p> : null}</div><span>{records.length} rows</span></div><div className="records-scroll"><table><thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>{records.map((record, index) => <tr key={index}>{columns.map((column) => <td key={column}>{display(record[column])}</td>)}</tr>)}</tbody></table>{!records.length ? <p className="empty-state">No matching rows were found.</p> : null}</div></section> : null}</div>}</div></>;
+  return <><header className="pane-header results-header workspace-pane-header"><div className="view-tabs" role="tablist" aria-label="Output views"><button type="button" role="tab" aria-selected={tab === "table"} onClick={() => setTab("table")}>Table</button><button type="button" role="tab" aria-selected={tab === "json"} onClick={() => setTab("json")}>JSON</button></div><div className="results-header-meta"><p>{records.length ? `${records.length} rows` : result.table ? "0 rows" : "1 document"}</p><MethodDetails processing={processing} showMapping={false} /></div></header><div className="results-scroll">{tab === "json" ? <pre className="json-output">{JSON.stringify(result, null, 2)}</pre> : <div className="table-output"><section><div className="section-heading"><h2>Document fields</h2><span>{Object.keys(result.fields).length}</span></div><dl className="result-fields">{Object.entries(result.fields).map(([key, value]) => <div key={key}><dt>{key}</dt><dd className={display(value) === "Not found" ? "missing" : ""}>{display(value)}</dd></div>)}</dl></section>{result.table || records.length ? <section className="records-output"><div className="section-heading"><div><h2>{tableName}</h2>{result.table?.description ? <p>{result.table.description}</p> : null}</div><span>{records.length} rows</span></div><div className="records-scroll"><table><thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>{records.map((record, index) => <tr key={index}>{columns.map((column) => <td key={column}>{display(record[column])}</td>)}</tr>)}</tbody></table>{!records.length ? <p className="empty-state">No matching rows were found.</p> : null}</div></section> : null}</div>}</div></>;
 }
 
 export function Results({ response, visible }: { response: ExtractionResponse; visible: boolean }) {
-  return <section className={`workspace-pane data-pane results-pane ${visible ? "mobile-visible" : ""}`} aria-labelledby="results-heading">{isAutomatic(response.result) ? <AutomaticResults result={response.result} processing={response.processing} /> : <LegacyResults result={response.result} processing={response.processing} />}</section>;
+  return <section className={`workspace-pane data-pane results-pane ${visible ? "mobile-visible" : ""}`} aria-labelledby="results-heading"><h2 id="results-heading" className="sr-only">Extraction results</h2>{isAutomatic(response.result) ? <AutomaticResults result={response.result} processing={response.processing} /> : <LegacyResults result={response.result} processing={response.processing} />}</section>;
 }

@@ -6,6 +6,14 @@ BACKEND_PORT="${BACKEND_PORT:-8000}"
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 APP_API_URL="${NEXT_PUBLIC_API_URL:-http://127.0.0.1:${BACKEND_PORT}}"
 
+ensure_port_is_free() {
+  local port="$1"
+  if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "Port $port is already in use. Stop the existing local service before starting the app." >&2
+    return 1
+  fi
+}
+
 if [[ ! -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
   echo "Missing Python environment: $PROJECT_ROOT/.venv/bin/python" >&2
   echo "Create it with: uv venv --python 3.12 .venv && uv pip install -r requirements.txt" >&2
@@ -16,6 +24,9 @@ if [[ ! -x "$PROJECT_ROOT/frontend/node_modules/.bin/next" ]]; then
   echo "Missing frontend dependencies. Run: cd frontend && npm install" >&2
   exit 1
 fi
+
+ensure_port_is_free "$BACKEND_PORT" || exit 1
+ensure_port_is_free "$FRONTEND_PORT" || exit 1
 
 echo "Building the frontend..."
 (cd "$PROJECT_ROOT/frontend" && NEXT_PUBLIC_API_URL="$APP_API_URL" npm run build)
