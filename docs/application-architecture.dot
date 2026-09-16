@@ -1,0 +1,61 @@
+digraph application_architecture {
+    graph [
+        bgcolor="white"
+        pad="0.25"
+        nodesep="0.45"
+        ranksep="0.65"
+        rankdir=TB
+        splines=polyline
+        fontname="Helvetica"
+        labelloc="t"
+        label="PDF extraction application — request architecture"
+        fontsize=18
+        fontcolor="#172033"
+    ]
+
+    node [
+        fontname="Helvetica"
+        fontsize=11
+        fontcolor="#172033"
+        color="#8090aa"
+        penwidth=1.2
+        style="filled"
+        fillcolor="#f7f9fc"
+        margin="0.16,0.10"
+    ]
+
+    edge [
+        fontname="Helvetica"
+        fontsize=9
+        fontcolor="#53627a"
+        color="#8090aa"
+        arrowsize=0.7
+    ]
+
+    user [label="User", shape=ellipse, fillcolor="#eef2ff"]
+    upload [label="UI\nupload + configure", shape=box, style="rounded,filled", fillcolor="#e9f3ff"]
+    api [label="FastAPI\nvalidation + orchestration", shape=box, style="rounded,filled", fillcolor="#e9f3ff"]
+    parse [label="LiteParse + Docling\nhybrid PDF parser", shape=box, style="rounded,filled", fillcolor="#f7f9fc"]
+    source [label="Markdown + table artifacts", shape=parallelogram, fillcolor="#edf8f1"]
+    mode [label="Extraction\nmode", shape=diamond, fillcolor="#fff5d9"]
+    automatic [label="Automatic mapping\nMarkdown + coordinates", shape=box, style="rounded,filled", fillcolor="#edf8f1"]
+    candidates [label="Compact schema evidence\nfields + table rows", shape=parallelogram, fillcolor="#f2ecff"]
+    schema [label="Schema mapping\nOpenRouter + local validation", shape=box, style="rounded,filled", fillcolor="#f2ecff"]
+    output [label="JSON + CSV response", shape=parallelogram, fillcolor="#edf8f1"]
+    review [label="Results in UI", shape=box, style="rounded,filled", fillcolor="#e9f3ff"]
+
+    user -> upload [label="uploads"]
+    upload -> api
+    api -> parse
+    parse -> source [label="text + geometry"]
+    source -> mode
+    mode -> automatic [label="automatic"]
+    mode -> candidates [label="schema"]
+    candidates -> schema
+    source -> schema [label="local validation", style=dashed]
+    automatic -> output
+    schema -> output
+    output -> review [label="renders + downloads"]
+
+    { rank=same; automatic; candidates }
+}

@@ -13,6 +13,8 @@ from backend.automatic_extraction import TextBlock, _coordinate_fields, extract_
 from backend.hybrid_pdf_to_md import merge_markdown
 from backend.run_pdf_to_outputs import extract_result, select_pdf, write_outputs
 from backend.schema_extractor import (
+    candidate_prompt_messages,
+    compact_candidate_evidence,
     csv_rows,
     has_exact_source_span,
     json_schema,
@@ -370,6 +372,68 @@ class ExtractionTests(unittest.TestCase):
         self.assertIn("Extract invoice details.", system_prompt)
         self.assertIn("invoice_number", system_prompt)
         self.assertIn("The printed invoice date.", system_prompt)
+
+    def test_candidate_evidence_is_compact_and_keeps_mapping_context(self) -> None:
+        evidence = compact_candidate_evidence(
+            {
+                "fields": [
+                    {
+                        "label": "Manufacturer",
+                        "value": "Acme Ltd.",
+                        "confidence": 0.98,
+                        "source": {
+                            "page": 2,
+                            "bbox": {"left": 10, "top": 20, "right": 30, "bottom": 40},
+                        },
+                    },
+                    {"label": "Empty label", "value": "", "source": {"page": 3}},
+                ],
+                "tables": [
+                    {
+                        "id": "table-1",
+                        "pages": [4],
+                        "columns": ["Property", "Result"],
+                        "rows": [{"Property": "Density", "Result": "0.9500"}],
+                        "cells": [{"large": "parser metadata"}],
+                        "confidence": 0.97,
+                    }
+                ],
+                "review": [
+                    {
+                        "label": "Issue date",
+                        "markdown": "16/09/2026",
+                        "coordinates": ["18/09/2026"],
+                        "reason": "Evidence disagrees",
+                    }
+                ],
+                "unlabeled": [{"text": "A long paragraph that must not enter the model prompt."}],
+            }
+        )
+        self.assertEqual("Manufacturer", evidence["document_fields"][0][1])
+        self.assertEqual([2], evidence["document_fields"][0][3])
+        self.assertEqual(1, len(evidence["document_fields"]))
+        self.assertEqual("0.9500", evidence["tables"][0]["rows"][0][1])
+        self.assertNotIn("cells", evidence["tables"][0])
+        self.assertEqual(
+            ["16/09/2026", "18/09/2026"],
+            evidence["ambiguous_fields"][0][2],
+        )
+
+    def test_candidate_prompt_maps_descriptions_without_full_markdown(self) -> None:
+        evidence = {
+            "document_field_columns": ["id", "label", "value", "pages", "source_line"],
+            "document_fields": [["field-1", "Manufacturer", "Acme Ltd.", [1], 4]],
+            "tables": [],
+            "ambiguous_field_columns": [],
+            "ambiguous_fields": [],
+            "text_candidate_columns": [],
+            "text_candidates": [],
+        }
+        system_prompt = candidate_prompt_messages(document_schema(), evidence)[0]["content"]
+        self.assertIn("The printed invoice identifier.", system_prompt)
+        self.assertIn('"field-1","Manufacturer","Acme Ltd."', system_prompt)
+        self.assertIn("Prefer an empty value over a weak", system_prompt)
+        self.assertNotIn("SOURCE MARKDOWN", system_prompt)
 
     def test_normalize_document_and_preserve_printed_values(self) -> None:
         markdown = "Invoice: INV-123\nDate: 14/09/2026\nTags: red, blue\nAmount: 19.7000"

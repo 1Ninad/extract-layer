@@ -6,6 +6,7 @@ input_pdf/**/*.pdf
 input_pdf/tp/
 output/
 tmp/
+.extractbench/
 
 # Local Python/runtime files
 .venv/

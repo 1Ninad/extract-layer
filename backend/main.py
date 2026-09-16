@@ -24,7 +24,8 @@ ROOT = Path(__file__).resolve().parents[1]
 from .extraction_schema import ExtractionSchema
 from .schema_extractor import (
     DEFAULT_MODEL,
-    call_openrouter,
+    call_openrouter_candidates,
+    compact_candidate_evidence,
     csv_rows,
     load_dotenv,
     normalize_response,
@@ -153,7 +154,7 @@ def _run_extraction(
         return result, csv_content, {
             "mode": "ocr_requested",
             "ocr_used": True,
-            "note": "OCR used. LiteParse and Docling processed this PDF with OCR enabled.",
+            "note": "OCR used. The LLM received compact extracted field and table candidates; the complete Markdown stayed local for validation.",
         }
 
     try:
@@ -177,13 +178,13 @@ def _run_extraction(
         return result, csv_content, {
             "mode": "ocr_fallback",
             "ocr_used": True,
-            "note": "OCR fallback used. The initial native-text extraction failed, so LiteParse and Docling were rerun with OCR enabled.",
+            "note": "OCR fallback used. The LLM received compact extracted field and table candidates from the OCR result; the complete Markdown stayed local for validation.",
         }
 
     return result, csv_content, {
         "mode": "native",
         "ocr_used": False,
-        "note": "OCR not used. Native PDF text extraction succeeded.",
+        "note": "OCR not used. The LLM received compact extracted field and table candidates; the complete Markdown stayed local for validation.",
     }
 
 
@@ -196,6 +197,7 @@ def _run_extraction_once(
 ) -> tuple[dict[str, object], str]:
     # Docling is intentionally imported here so health and schema endpoints can
     # still diagnose configuration when the parser runtime is incomplete.
+    from .automatic_extraction import extract_automatic
     from .hybrid_pdf_to_md import build
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -210,9 +212,31 @@ def _run_extraction_once(
         markdown = markdown_path.read_text(encoding="utf-8")
         if not use_ocr:
             _validate_native_markdown(markdown)
+        artifact_path = working_dir / "parsed" / "docling_tables.json"
+        artifacts = json.loads(artifact_path.read_text(encoding="utf-8"))
+        automatic_result, _ = extract_automatic(
+            markdown,
+            artifacts,
+            artifacts.get("tables", []),
+            pdf_path.name,
+        )
+        evidence = compact_candidate_evidence(automatic_result)
         last_error: ValueError | None = None
         for attempt in range(3):
-            candidate = call_openrouter(markdown, schema, api_key, model)
+            retry_note = None
+            if last_error is not None:
+                retry_note = (
+                    "The previous mapping failed exact source validation. Choose only complete, exact "
+                    "values from the supplied candidates; otherwise return an empty value. "
+                    f"Validation detail: {last_error}"
+                )
+            candidate = call_openrouter_candidates(
+                evidence,
+                schema,
+                api_key,
+                model,
+                retry_note=retry_note,
+            )
             try:
                 result = normalize_response(candidate, markdown, schema, pdf_path.name)
                 break

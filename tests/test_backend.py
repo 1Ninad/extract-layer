@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from pypdf import PdfWriter
 
 from backend.main import app
-from backend.main import _run_extraction, _validate_native_markdown
+from backend.main import _run_extraction, _run_extraction_once, _validate_native_markdown
 from backend.extraction_schema import ExtractionSchema
 
 
@@ -215,6 +217,67 @@ class BackendTests(unittest.TestCase):
         self.assertEqual("native", processing["mode"])
         self.assertFalse(processing["ocr_used"])
         self.assertIn("OCR not used", processing["note"])
+
+    def test_schema_extraction_sends_candidates_not_complete_markdown(self) -> None:
+        schema = ExtractionSchema.from_mapping(
+            {
+                "schema_version": 1,
+                "name": "certificate",
+                "description": "Extract certificate details.",
+                "output_mode": "document",
+                "fields": [
+                    {
+                        "name": "company_name",
+                        "type": "text",
+                        "description": "The manufacturing company.",
+                    }
+                ],
+            }
+        )
+
+        def fake_build(_pdf_path: Path, output_dir: Path, _binary: str | None, _ocr: bool) -> Path:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "docling_tables.json").write_text("{}", encoding="utf-8")
+            markdown_path = output_dir / "final.md"
+            markdown_path.write_text(
+                "Manufacturer: Acme Ltd.\nThis long prose must stay local.",
+                encoding="utf-8",
+            )
+            return markdown_path
+
+        automatic_result = {
+            "fields": [
+                {
+                    "label": "Manufacturer",
+                    "value": "Acme Ltd.",
+                    "source": {"page": 1, "line": 1},
+                }
+            ],
+            "tables": [],
+            "review": [],
+            "unlabeled": [{"kind": "paragraph", "text": "This long prose must stay local."}],
+        }
+        with (
+            patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}),
+            patch("backend.hybrid_pdf_to_md.build", side_effect=fake_build),
+            patch("backend.automatic_extraction.extract_automatic", return_value=(automatic_result, "")),
+            patch(
+                "backend.main.call_openrouter_candidates",
+                return_value={"fields": {"company_name": "Acme Ltd."}},
+            ) as call,
+        ):
+            result, _ = _run_extraction_once(
+                b"%PDF-test",
+                "certificate.pdf",
+                schema,
+                "test-model",
+                use_ocr=False,
+            )
+
+        evidence = call.call_args.args[0]
+        self.assertEqual("Manufacturer", evidence["document_fields"][0][1])
+        self.assertNotIn("This long prose", json.dumps(evidence))
+        self.assertEqual("Acme Ltd.", result["fields"]["company_name"])
 
     def test_native_markdown_quality_gate_rejects_empty_and_control_text(self) -> None:
         with self.assertRaisesRegex(ValueError, "no usable text"):

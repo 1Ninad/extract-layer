@@ -1,41 +1,35 @@
-# Generic PDF Extraction
+# PDF extraction
 
-This project converts digitally-generated PDFs into structured JSON and CSV.
-The web flow automatically maps fields and tables using LiteParse Markdown
-structure plus Docling table and PDF coordinates. Ambiguous relationships stay
-under review, and the automatic flow makes no LLM calls or model-cost charges.
-The original schema-driven OpenRouter flow remains available for compatible
-API and command-line callers.
+This application turns PDFs into structured JSON and CSV.
 
-The extractor preserves printed values. It does not translate, calculate,
-normalize dates, convert units, round numbers, or invent missing values.
+It has two modes:
 
-## Web application
+- **Automatic extraction** finds fields and tables without an LLM.
+- **Schema extraction** uses a user-uploaded JSON schema and an LLM to return only the requested values.
 
-The repository includes a FastAPI backend and a separate Next.js frontend.
-The API supports automatic extraction when no `schema` form field is sent. A
-schema form field selects the backwards-compatible LiteParse + Docling +
-OpenRouter pipeline.
+Values are kept as printed. The application does not translate, calculate,
+round, convert units, or invent missing values.
 
-Run both services from the repository root with one command:
+## Run the web app
+
+From the project root:
 
 ```bash
 bash run_web_app.sh
 ```
 
-Then open `http://127.0.0.1:3000`. Press `Ctrl-C` to stop both services.
+Open `http://127.0.0.1:3000`.
 
-The launcher builds the frontend with the configured API URL before starting
-the production server.
+The launcher starts the Next.js frontend and FastAPI backend. The backend uses
+LiteParse and Docling to process PDFs. Set `OPENROUTER_API_KEY` in the root
+environment or `.env` when using schema extraction.
 
-Start the backend from the repository root:
+To run the services separately:
 
 ```bash
 source .venv/bin/activate
 uvicorn backend.main:app --reload --port 8000
 ```
-
-In a second terminal, start the frontend:
 
 ```bash
 cd frontend
@@ -44,17 +38,13 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000`. Upload one PDF (maximum 20 pages), then select
-an extraction mode. **Automatic extraction** keeps the existing mapped fields,
-reconstructed tables, unlabeled content, and Review view. **Use a JSON schema**
-returns only the requested fields and optional table rows. Both modes can be
-downloaded as JSON or CSV.
+## Schema extraction
 
-### Upload a JSON schema
+After uploading a PDF, choose **Use a JSON schema** and upload a `.json` file.
+The file is read in the browser, validated locally and by the backend, and is
+not stored on the server.
 
-Schema mode accepts a small JSON file that can be written by hand. The app
-validates it before extraction and does not store the file on the server. A
-schema contains document fields and, optionally, one repeated table:
+The simple schema format has document fields and one optional repeated table:
 
 ```json
 {
@@ -76,155 +66,91 @@ schema contains document fields and, optionally, one repeated table:
 }
 ```
 
-`type` is optional and defaults to `text`. Supported types are `text`,
-`number`, `date`, `boolean`, `array`, and `object`. Schema JSON results keep
-document fields and table rows separate. CSV flattens table results into one
-row per table record and repeats document fields on each row.
+Required properties are `schema_version`, `name`, `description`, and
+`fields`. `table` is optional. Field `type` is optional and defaults to
+`text`. Supported types are `text`, `number`, `date`, `boolean`, `array`, and
+`object`.
 
-The backend reads `OPENROUTER_API_KEY` and optional `OPENROUTER_MODEL` from the
-root environment or `.env`. `FRONTEND_ORIGINS` controls allowed browser origins.
-Interactive API documentation is available at `http://localhost:8000/docs`.
+Schema JSON keeps document fields and table rows separate. CSV is a flat
+convenience format: document-only schemas produce one row, while table schemas
+produce one row per table record and repeat the document fields.
 
-## Setup
-
-Use Python 3.12 on macOS for the broadest wheel compatibility:
-
-```bash
-uv venv --python 3.12 .venv
-source .venv/bin/activate
-uv pip install -r requirements.txt
-```
-
-Set `OPENROUTER_API_KEY` in the environment or in `.env`.
-
-## Create a schema
-
-Create a readable TOML schema with the guided wizard:
-
-```bash
-python -m backend.run_pdf_to_outputs --init-schema config/invoice.toml
-```
-
-The wizard asks for an overall document description and each field's name,
-type, and distinguishing description. Supported types are `text`, `number`,
-`date`, `boolean`, `array`, and `object`. Arrays may contain scalar values or
-nested objects, which is useful for tables.
-
-The example input in this repository is `examples/input.pdf`, with its
-reusable extraction schema in `examples/input.json`. Run it with:
+The CLI also accepts JSON or TOML schemas:
 
 ```bash
 .venv/bin/python -m backend.run_pdf_to_outputs \
-  --pdf examples/input.pdf \
-  --schema examples/input.json \
+  --pdf examples/input1.pdf \
+  --schema examples/input1.json \
   --output-dir examples \
-  --save-markdown \
   --flat-output
 ```
 
-This reads `examples/input.pdf` using `examples/input.json` and writes:
+## When the LLM is used
+
+The LLM is used only for schema extraction.
+
+The processing path is:
 
 ```text
-examples/input_output.json
-examples/input_output.csv
-examples/input_output.md
+PDF -> LiteParse and Docling -> local field/table candidates
+    -> schema + compact candidates -> LLM mapping
+    -> validation against local Markdown -> JSON and CSV
 ```
 
-The schema uses a compact repeated-record layout. A different PDF gets its
-output shape from its own TOML schema; the extraction code does not contain
-document- or field-specific rules.
+The LLM receives:
 
-A schema can contain document-level fields and, in `records` mode, a repeated
-record group for line items or table rows:
+- the overall schema description
+- every requested field name and description
+- every table name, description, and field definition
+- declared field types
+- compact extracted label/value candidates
+- reconstructed table headers and rows
+- short unresolved text candidates and ambiguous field values
 
-```toml
-schema_version = 1
-name = "invoice"
-description = "Extract invoice identifiers and line items."
-output_mode = "records"
+It does not receive the original PDF or the complete processed Markdown in the
+normal schema path. Coordinates, cell metadata, long unlabeled prose, and other
+parser internals are removed before the model call.
 
-[[fields]]
-name = "invoice_number"
-type = "text"
-description = "The supplier's invoice identifier, not the purchase order or delivery number."
+The LLM decides which source value matches a field semantically. For example,
+a field called `company_name` can match a PDF label such as `Manufacturer` if
+the description makes that meaning clear. Repeated records must remain aligned
+to their source table rows, and source-line order is retained when a nearby
+field supplies context inherited by a following table.
 
-[records]
-name = "line_items"
-description = "One record for each separately listed product or service line."
+The LLM response is treated as a candidate location, not as trusted output.
+The backend checks the expected keys, checks that returned values exist in the
+processed Markdown, preserves the source spelling and formatting, rejects
+unsupported numeric changes, and retries invalid responses. If a value cannot
+be safely matched to the source, extraction fails rather than silently
+inventing a value.
 
-[[records.fields]]
-name = "description"
-type = "text"
-description = "The exact product or service description for this line."
+This reduces model input most for documents containing substantial prose or
+parser metadata. A short document made almost entirely of requested tables may
+see little token reduction because the table cells still need to be supplied.
 
-[[records.fields]]
-name = "quantity"
-type = "number"
-description = "The printed quantity for this line, preserving decimals and trailing zeroes."
-```
+## Automatic mapping
 
-Descriptions should explain how to distinguish a field from similar values in
-the document. Values are returned exactly as printed even when their declared
-type is `number` or `date`.
+Automatic extraction is deterministic and makes no LLM calls. It combines:
 
-Field names may use either machine-friendly underscores (`invoice_number`) or
-human-readable spaces (`Invoice Number`). The name is preserved exactly in the
-JSON keys and CSV headers.
+- Markdown structure from LiteParse
+- table structure and coordinates from Docling
+- PDF coordinates for field and table relationships
 
-## Run extraction
+Uncertain relationships go to Review. Unlabeled source text is preserved. The
+full design and correctness rules are documented in
+`docs/automatic-field-mapping-plan.md`.
 
-Process one PDF explicitly:
+## Limits and configuration
+
+- PDFs are limited to 20 pages and 25 MB by default.
+- Schema files are limited to 1 MB in the web app.
+- `OPENROUTER_MODEL` selects the schema extraction model.
+- `FRONTEND_ORIGINS` controls allowed browser origins.
+- API documentation is available at `http://localhost:8000/docs`.
+
+## Verification
 
 ```bash
-python -m backend.run_pdf_to_outputs \
-  --pdf input_pdf/invoice.pdf \
-  --schema config/invoice.toml
+.venv/bin/python -m unittest tests.test_backend tests.test_generalized_extraction
+cd frontend && npm run typecheck && npm run build
 ```
-
-If `input_pdf/` contains exactly one PDF, `--pdf` can be omitted:
-
-```bash
-python -m backend.run_pdf_to_outputs --schema config/invoice.toml
-```
-
-Useful options:
-
-- `--ocr` enables OCR in both parsers.
-- `--liteparse PATH` selects a LiteParse executable.
-- `--model MODEL` selects the OpenRouter model.
-- `--api-key KEY` supplies the OpenRouter key directly.
-- `--output-dir PATH` changes the output root.
-- `--save-markdown` keeps intermediate Markdown under `output/markdown/`.
-
-Outputs are written under `output/extracted/`:
-
-```text
-invoice_output.json
-invoice_output.csv
-```
-
-Output filenames use the input PDF stem with `_output` appended. For example,
-`invoice.pdf` produces `invoice_output.json` and `invoice_output.csv`.
-
-JSON keeps document fields and records separate. CSV is flattened: document
-mode produces one row, while records mode produces one row per record and
-repeats document-level fields. Arrays are stored as compact JSON strings in
-CSV cells. Automatic-mode CSV also includes `unlabeled_content` and
-`review_content` JSON columns so paragraphs and unresolved source text are not
-lost when exporting. Every CSV includes `source_file` for provenance.
-
-The runner treats the LLM response as a candidate location, not as the final
-value. Exact matches are accepted directly. When the model adds harmless
-connective words or changes whitespace/case/punctuation, the normalizer
-projects the candidate back onto a unique source span and writes the Markdown
-value to JSON/CSV. It can also recover a complete source span when the model
-omits non-numeric descriptive words inside that span. Numeric tokens must still
-match exactly; ambiguous or unsupported values fail validation. Final JSON and CSV files are not written
-when schema, response, or source-projection validation fails. The generalized
-path retries a source-validation failure up to three total extraction attempts,
-using the same Markdown and prompt; it does not send the original PDF.
-
-The web API first runs LiteParse and Docling with native text extraction. If
-that complete extraction pass fails, it reruns both parsers with OCR enabled.
-The response includes a processing note showing whether native extraction or
-the OCR fallback produced the result.

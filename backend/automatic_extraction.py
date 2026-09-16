@@ -685,6 +685,18 @@ def extract_automatic(markdown: str, raw_document: dict[str, Any], table_records
         )
     ]
     tables = _table_output(table_records)
+    used_markdown_tables: set[int] = set()
+    for table in tables:
+        expected_columns = [_normal(str(column)) for column in table.get("columns", [])]
+        for index, markdown_table in enumerate(markdown_tables):
+            if index in used_markdown_tables or not markdown_table.get("rows"):
+                continue
+            markdown_columns = [_normal(str(column)) for column in markdown_table["rows"][0]]
+            if markdown_columns != expected_columns:
+                continue
+            table["source_line"] = markdown_table["line_start"]
+            used_markdown_tables.add(index)
+            break
     table_duplicates = sum(len(table.get("duplicate_pages", [])) for table in tables)
     result = {
         "source_file": source_file,

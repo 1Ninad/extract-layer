@@ -16,6 +16,8 @@ from .hybrid_pdf_to_md import build
 from .schema_extractor import (
     DEFAULT_MODEL,
     call_openrouter,
+    call_openrouter_candidates,
+    compact_candidate_evidence,
     csv_rows,
     load_dotenv,
     normalize_response,
@@ -85,10 +87,40 @@ def write_outputs(
     return json_path, csv_path
 
 
-def extract_result(pdf_path: Path, markdown: str, schema, api_key: str, model: str) -> dict[str, object]:
+def extract_result(
+    pdf_path: Path,
+    markdown: str,
+    schema,
+    api_key: str,
+    model: str,
+    evidence: dict[str, object] | None = None,
+) -> dict[str, object]:
     last_error: ValueError | None = None
     for attempt in range(1, MAX_EXTRACTION_ATTEMPTS + 1):
-        response = call_openrouter(markdown, schema, api_key, model)
+        retry_note = None
+        if last_error is not None:
+            retry_note = (
+                "The previous mapping failed exact source validation. Choose only complete, exact "
+                "values from the supplied candidates; otherwise return an empty value. "
+                f"Validation detail: {last_error}"
+            )
+        response = (
+            call_openrouter_candidates(
+                evidence,
+                schema,
+                api_key,
+                model,
+                retry_note=retry_note,
+            )
+            if evidence is not None
+            else call_openrouter(
+                markdown,
+                schema,
+                api_key,
+                model,
+                retry_note=retry_note,
+            )
+        )
         try:
             return normalize_response(response, markdown, schema, pdf_path.name)
         except ValueError as exc:
@@ -102,6 +134,24 @@ def extract_result(pdf_path: Path, markdown: str, schema, api_key: str, model: s
             )
     assert last_error is not None
     raise last_error
+
+
+def _candidate_evidence(
+    markdown: str,
+    parser_output_dir: Path,
+    source_file: str,
+) -> dict[str, object]:
+    from .automatic_extraction import extract_automatic
+
+    artifact_path = parser_output_dir / "docling_tables.json"
+    artifacts = json.loads(artifact_path.read_text(encoding="utf-8"))
+    automatic_result, _ = extract_automatic(
+        markdown,
+        artifacts,
+        artifacts.get("tables", []),
+        source_file,
+    )
+    return compact_candidate_evidence(automatic_result)
 
 
 def run(args: argparse.Namespace) -> tuple[Path, Path]:
@@ -125,25 +175,30 @@ def run(args: argparse.Namespace) -> tuple[Path, Path]:
     print(f"Extracting {pdf_path} with schema {schema.name!r}...", flush=True)
     if args.save_markdown and args.flat_output:
         with tempfile.TemporaryDirectory(prefix="pdf-litparse-") as temp_dir:
-            hybrid_path = build(pdf_path, Path(temp_dir), args.liteparse, args.ocr)
+            parser_output_dir = Path(temp_dir)
+            hybrid_path = build(pdf_path, parser_output_dir, args.liteparse, args.ocr)
             markdown = hybrid_path.read_text(encoding="utf-8")
+            evidence = _candidate_evidence(markdown, parser_output_dir, pdf_path.name)
         output_dir.mkdir(parents=True, exist_ok=True)
         (output_dir / f"{pdf_path.stem}_output.md").write_text(markdown, encoding="utf-8")
     elif args.save_markdown:
         markdown_dir = output_dir / "markdown" / pdf_path.stem
         hybrid_path = build(pdf_path, markdown_dir, args.liteparse, args.ocr)
         markdown = hybrid_path.read_text(encoding="utf-8")
+        evidence = _candidate_evidence(markdown, markdown_dir, pdf_path.name)
     else:
         with tempfile.TemporaryDirectory(prefix="pdf-litparse-") as temp_dir:
-            hybrid_path = build(pdf_path, Path(temp_dir), args.liteparse, args.ocr)
+            parser_output_dir = Path(temp_dir)
+            hybrid_path = build(pdf_path, parser_output_dir, args.liteparse, args.ocr)
             markdown = hybrid_path.read_text(encoding="utf-8")
-            result = extract_result(pdf_path, markdown, schema, api_key, args.model)
+            evidence = _candidate_evidence(markdown, parser_output_dir, pdf_path.name)
+            result = extract_result(pdf_path, markdown, schema, api_key, args.model, evidence)
             paths = write_outputs(result, schema, output_dir, args.flat_output)
             print(f"Wrote {paths[0]}", flush=True)
             print(f"Wrote {paths[1]}", flush=True)
             return paths
 
-    result = extract_result(pdf_path, markdown, schema, api_key, args.model)
+    result = extract_result(pdf_path, markdown, schema, api_key, args.model, evidence)
     paths = write_outputs(result, schema, output_dir, args.flat_output)
     print(f"Wrote {paths[0]}", flush=True)
     print(f"Wrote {paths[1]}", flush=True)
