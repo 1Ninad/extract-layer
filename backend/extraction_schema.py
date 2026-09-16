@@ -132,27 +132,40 @@ class ExtractionSchema:
     @classmethod
     def from_mapping(cls, raw: dict[str, Any]) -> "ExtractionSchema":
         if not isinstance(raw, dict):
-            raise ValueError("schema must be a TOML table")
+            raise ValueError("schema must be a JSON object or TOML table")
 
-        fields = tuple(_field_from_mapping(value, "document") for value in raw.get("fields", []))
+        raw_fields = raw.get("fields", [])
+        if not isinstance(raw_fields, list):
+            raise ValueError("fields must be an array")
+        fields = tuple(_field_from_mapping(value, "document") for value in raw_fields)
         raw_records = raw.get("records")
+        raw_table = raw.get("table")
+        if raw_records is not None and raw_table is not None:
+            raise ValueError("schema cannot define both table and records")
+        if raw_table is not None:
+            raw_records = raw_table
         records = None
         if raw_records is not None:
             if not isinstance(raw_records, dict):
-                raise ValueError("records must be a TOML table")
+                raise ValueError("table or records must be an object")
             records = RecordSpec(
-                name=_string_value(raw_records, "name", "records"),
-                description=_string_value(raw_records, "description", "records"),
+                name=_string_value(raw_records, "name", "table" if raw_table is not None else "records"),
+                description=_string_value(raw_records, "description", "table" if raw_table is not None else "records"),
                 fields=tuple(
-                    _field_from_mapping(value, "records") for value in raw_records.get("fields", [])
+                    _field_from_mapping(value, "table" if raw_table is not None else "records")
+                    for value in _record_fields(raw_records, "table" if raw_table is not None else "records")
                 ),
             )
+
+        output_mode = raw.get("output_mode")
+        if output_mode is None:
+            output_mode = "records" if records is not None else "document"
 
         schema = cls(
             schema_version=_integer_value(raw, "schema_version", "schema"),
             name=_string_value(raw, "name", "schema"),
             description=_string_value(raw, "description", "schema"),
-            output_mode=_string_value(raw, "output_mode", "schema"),
+            output_mode=output_mode if isinstance(output_mode, str) else str(output_mode),
             fields=fields,
             records=records,
         )
@@ -167,6 +180,13 @@ def _string_value(mapping: dict[str, Any], key: str, location: str) -> str:
     return value
 
 
+def _record_fields(mapping: dict[str, Any], location: str) -> list[Any]:
+    fields = mapping.get("fields", [])
+    if not isinstance(fields, list):
+        raise ValueError(f"{location}.fields must be an array")
+    return fields
+
+
 def _integer_value(mapping: dict[str, Any], key: str, location: str) -> int:
     value = mapping.get(key)
     if not isinstance(value, int) or isinstance(value, bool):
@@ -176,9 +196,11 @@ def _integer_value(mapping: dict[str, Any], key: str, location: str) -> int:
 
 def _field_from_mapping(value: Any, location: str) -> FieldSpec:
     if not isinstance(value, dict):
-        raise ValueError(f"{location} fields must be TOML tables")
+        raise ValueError(f"{location} fields must be objects or TOML tables")
     name = _string_value(value, "name", location)
-    field_type = _string_value(value, "type", f"{location}.{name}")
+    field_type = value.get("type", "text")
+    if not isinstance(field_type, str):
+        raise ValueError(f"{location}.{name}.type must be a string")
     description = _string_value(value, "description", f"{location}.{name}")
     item_type = value.get("item_type", "text")
     if not isinstance(item_type, str):

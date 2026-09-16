@@ -4,17 +4,30 @@ export type FieldDefinition = {
   description: string;
 };
 
+export type SchemaFieldDefinition = {
+  name: string;
+  description: string;
+  type?: "text" | "number" | "date" | "boolean" | "array" | "object";
+};
+
 export type SchemaDefinition = {
   schema_version: 1;
   name: string;
   description: string;
-  output_mode: "document" | "records";
-  fields: Array<Omit<FieldDefinition, "id"> & { type: "text" }>;
-  records?: {
+  fields: SchemaFieldDefinition[];
+  table?: {
     name: string;
     description: string;
-    fields: Array<Omit<FieldDefinition, "id"> & { type: "text" }>;
+    fields: SchemaFieldDefinition[];
   };
+};
+
+export type ExtractionMode = "automatic" | "schema";
+
+export type SchemaUploadState = {
+  fileName: string;
+  raw: string;
+  schema: SchemaDefinition;
 };
 
 export type AutomaticField = {
@@ -74,6 +87,12 @@ export type LegacyExtractionResult = {
   schema: string;
   fields: Record<string, unknown>;
   records?: Record<string, unknown>[];
+  table?: {
+    name: string;
+    description: string;
+    columns: string[];
+    rows: Record<string, unknown>[];
+  };
 };
 
 export type ExtractionResult = AutomaticExtractionResult | LegacyExtractionResult;

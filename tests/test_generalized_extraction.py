@@ -83,6 +83,24 @@ def nested_schema() -> ExtractionSchema:
 
 
 class SchemaTests(unittest.TestCase):
+    def test_simple_json_shape_infers_records_and_defaults_text_type(self) -> None:
+        schema = ExtractionSchema.from_mapping(
+            {
+                "schema_version": 1,
+                "name": "invoice",
+                "description": "Extract invoice details.",
+                "fields": [{"name": "invoice_number", "description": "The invoice number."}],
+                "table": {
+                    "name": "line_items",
+                    "description": "Each line item.",
+                    "fields": [{"name": "description", "description": "The line description."}],
+                },
+            }
+        )
+        self.assertEqual("records", schema.output_mode)
+        self.assertEqual("text", schema.fields[0].type)
+        self.assertEqual("line_items", schema.records.name)
+
     def test_toml_round_trip(self) -> None:
         schema = record_schema()
         with tempfile.TemporaryDirectory() as directory:
@@ -306,6 +324,31 @@ class ExtractionTests(unittest.TestCase):
         self.assertEqual(columns, ["source_file", "invoice_number", "description", "quantity"])
         self.assertEqual(rows[0]["quantity"], "10.000")
         self.assertEqual(rows[1]["description"], "Material B")
+
+    def test_normalized_records_include_table_metadata_and_columns(self) -> None:
+        schema = ExtractionSchema.from_mapping(
+            {
+                "schema_version": 1,
+                "name": "invoice",
+                "description": "Extract invoice rows.",
+                "fields": [],
+                "table": {
+                    "name": "line_items",
+                    "description": "Each line.",
+                    "fields": [{"name": "description", "description": "The line description."}],
+                },
+            }
+        )
+        result = normalize_response(
+            {"fields": {}, "records": []},
+            "No line items",
+            schema,
+            "invoice.pdf",
+        )
+        self.assertEqual(
+            {"name": "line_items", "description": "Each line.", "columns": ["description"], "rows": []},
+            result["table"],
+        )
 
     def test_hallucinated_and_truncated_values_are_rejected(self) -> None:
         schema = ExtractionSchema(

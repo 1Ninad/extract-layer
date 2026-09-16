@@ -45,9 +45,41 @@ npm run dev
 ```
 
 Open `http://localhost:3000`. Upload one PDF (maximum 20 pages), then select
-**Extract automatically**. The result includes mapped fields, reconstructed
-tables, unlabeled content, and a Review view, and can be downloaded as JSON or
-CSV.
+an extraction mode. **Automatic extraction** keeps the existing mapped fields,
+reconstructed tables, unlabeled content, and Review view. **Use a JSON schema**
+returns only the requested fields and optional table rows. Both modes can be
+downloaded as JSON or CSV.
+
+### Upload a JSON schema
+
+Schema mode accepts a small JSON file that can be written by hand. The app
+validates it before extraction and does not store the file on the server. A
+schema contains document fields and, optionally, one repeated table:
+
+```json
+{
+  "schema_version": 1,
+  "name": "invoice",
+  "description": "Extract invoice details and line items.",
+  "fields": [
+    {"name": "invoice_number", "description": "The printed invoice number."},
+    {"name": "invoice_date", "description": "The printed invoice date."}
+  ],
+  "table": {
+    "name": "line_items",
+    "description": "Each product or service row.",
+    "fields": [
+      {"name": "description", "description": "The product or service description."},
+      {"name": "quantity", "description": "The printed quantity."}
+    ]
+  }
+}
+```
+
+`type` is optional and defaults to `text`. Supported types are `text`,
+`number`, `date`, `boolean`, `array`, and `object`. Schema JSON results keep
+document fields and table rows separate. CSV flattens table results into one
+row per table record and repeats document fields on each row.
 
 The backend reads `OPENROUTER_API_KEY` and optional `OPENROUTER_MODEL` from the
 root environment or `.env`. `FRONTEND_ORIGINS` controls allowed browser origins.

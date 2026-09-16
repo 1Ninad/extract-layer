@@ -559,6 +559,12 @@ def merge_normalized_results(
                     seen.add(key)
                     merged_records.append(record)
         merged["records"] = merged_records
+        merged["table"] = {
+            "name": schema.records.name,
+            "description": schema.records.description,
+            "columns": [field.name for field in schema.records.fields],
+            "rows": merged_records,
+        }
     return merged
 
 
@@ -620,6 +626,12 @@ def _discard_unsupported_values(
             }
             for record in result.get("records", [])
         ]
+        filtered["table"] = {
+            "name": schema.records.name,
+            "description": schema.records.description,
+            "columns": [field.name for field in schema.records.fields],
+            "rows": filtered["records"],
+        }
     return filtered
 
 
@@ -758,6 +770,12 @@ def normalize_response(
                 _normalize_fields(raw_record, schema.records.fields, markdown, f"record {index}", validate_source)
             )
         result["records"] = records
+        result["table"] = {
+            "name": schema.records.name,
+            "description": schema.records.description,
+            "columns": [field.name for field in schema.records.fields],
+            "rows": records,
+        }
     return result
 
 

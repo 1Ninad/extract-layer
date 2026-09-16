@@ -5,21 +5,30 @@ import { FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DocumentPanel } from "@/components/document-panel";
 import { ExportMenu } from "@/components/export-menu";
+import { ExtractionModeChooser } from "@/components/extraction-mode";
 import { Results } from "@/components/results";
+import { SchemaUpload } from "@/components/schema-upload";
 import { demoResponse } from "@/lib/demo";
-import type { ExtractionResponse } from "@/lib/types";
+import { readSchemaFile } from "@/lib/schema";
+import type { ExtractionMode, ExtractionResponse, SchemaUploadState } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type ExamplePayload = { filename: string; pdf_url: string };
+type SetupStep = "mode" | "schema";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [response, setResponse] = useState<ExtractionResponse | null>(null);
   const [error, setError] = useState("");
+  const [schemaError, setSchemaError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [schemaValidating, setSchemaValidating] = useState(false);
   const [exampleLoading, setExampleLoading] = useState(false);
   const [demo, setDemo] = useState(false);
+  const [mode, setMode] = useState<ExtractionMode | null>(null);
+  const [setupStep, setSetupStep] = useState<SetupStep>("mode");
+  const [schemaUpload, setSchemaUpload] = useState<SchemaUploadState | null>(null);
   const [mobileView, setMobileView] = useState<"document" | "data">("document");
 
   useEffect(() => {
@@ -42,6 +51,8 @@ export default function Home() {
       setFile(new File([pdf], config.filename, { type: "application/pdf" }));
       setResponse(null);
       setDemo(false);
+      setMode(null);
+      setSetupStep("mode");
       setMobileView("data");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load the example.");
@@ -50,9 +61,56 @@ export default function Home() {
     }
   }
 
+  async function handleSchemaFile(nextFile: File) {
+    setSchemaError("");
+    setSchemaValidating(true);
+    try {
+      const parsed = await readSchemaFile(nextFile);
+      const validationResponse = await fetch(`${API_URL}/api/schema/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: parsed.raw,
+      });
+      const payload = await validationResponse.json().catch(() => ({}));
+      if (!validationResponse.ok) {
+        throw new Error(typeof payload.detail === "string" ? payload.detail : "The schema could not be validated.");
+      }
+      setSchemaUpload(parsed);
+      setSetupStep("schema");
+    } catch (caught) {
+      setSchemaUpload(null);
+      setSchemaError(caught instanceof Error ? caught.message : "The schema could not be read.");
+    } finally {
+      setSchemaValidating(false);
+    }
+  }
+
+  function selectMode(nextMode: ExtractionMode) {
+    setMode(nextMode);
+    setError("");
+    if (nextMode === "automatic") setSetupStep("mode");
+  }
+
+  function continueSetup() {
+    if (!mode) return;
+    if (mode === "schema" && !schemaUpload) {
+      setSetupStep("schema");
+      return;
+    }
+    void extract();
+  }
+
   async function extract() {
     if (!file) {
       setError("Add a PDF before extracting.");
+      return;
+    }
+    if (!mode) {
+      setError("Choose an extraction mode first.");
+      return;
+    }
+    if (mode === "schema" && !schemaUpload) {
+      setSetupStep("schema");
       return;
     }
     setLoading(true);
@@ -61,6 +119,7 @@ export default function Home() {
     try {
       const form = new FormData();
       form.append("pdf", file);
+      if (mode === "schema" && schemaUpload) form.append("schema", schemaUpload.raw);
       const result = await fetch(`${API_URL}/api/extractions`, { method: "POST", body: form });
       const payload = await result.json();
       if (!result.ok) throw new Error(typeof payload.detail === "string" ? payload.detail : "Extraction failed.");
@@ -73,20 +132,59 @@ export default function Home() {
     }
   }
 
+  function changePdf(next: File) {
+    setFile(next);
+    setResponse(null);
+    setDemo(false);
+    setError("");
+    setSchemaError("");
+    setSetupStep("mode");
+    setMobileView("data");
+  }
+
+  function startOver() {
+    setFile(null);
+    setResponse(null);
+    setMode(null);
+    setSchemaUpload(null);
+    setSchemaError("");
+    setError("");
+    setDemo(false);
+    setSetupStep("mode");
+    setMobileView("document");
+  }
+
+  const actionLabel = response
+    ? "Run again"
+    : mode === "automatic"
+      ? "Extract automatically"
+      : mode === "schema" && schemaUpload
+        ? "Extract with schema"
+        : mode === "schema"
+          ? "Choose JSON schema"
+          : "Choose extraction";
+
   return (
     <main className="app-shell">
       <div className="app-content">
         <header className="topbar">
-          <div className="product-label" aria-label="Automatic PDF extraction workspace">
+          <div className="product-label" aria-label="PDF extraction workspace">
             <span className="product-mark" aria-hidden="true"><FileText /></span>
-            <span className="product-copy"><span className="product-title">Automatic PDF extraction</span><span className="product-subtitle">PDF to structured data</span></span>
+            <span className="product-copy"><span className="product-title">PDF extraction</span><span className="product-subtitle">PDF to structured data</span></span>
           </div>
-          <div className="mobile-tabs" role="tablist" aria-label="Workspace views"><button type="button" role="tab" aria-selected={mobileView === "document"} onClick={() => setMobileView("document")}>Document</button><button type="button" role="tab" aria-selected={mobileView === "data"} onClick={() => setMobileView("data")}>{response ? "Extracted" : "How it works"}</button></div>
-          <div className="topbar-actions">{response && !demo ? <button className="secondary-button" type="button" onClick={() => { setResponse(null); setMobileView("data"); }}><ReloadIcon /> Re-run</button> : null}{response ? <ExportMenu response={response} /> : <button className="primary-button" type="button" disabled={loading || exampleLoading || demo || !file} onClick={extract}>{loading ? "Extracting..." : "Extract automatically"}</button>}</div>
+          <div className="mobile-tabs" role="tablist" aria-label="Workspace views"><button type="button" role="tab" aria-selected={mobileView === "document"} onClick={() => setMobileView("document")}>Document</button><button type="button" role="tab" aria-selected={mobileView === "data"} onClick={() => setMobileView("data")}>{response ? "Extracted" : "Configure"}</button></div>
+          <div className="topbar-actions">
+            {file ? <button className="quiet-button start-over-button" type="button" onClick={startOver}>Start over</button> : null}
+            {response && !demo ? <button className="secondary-button" type="button" onClick={() => void extract()} disabled={loading}><ReloadIcon /> {loading ? "Extracting..." : "Run again"}</button> : null}
+            {response ? <ExportMenu response={response} /> : <button className="primary-button" type="button" disabled={loading || exampleLoading || demo || !file || !mode} onClick={continueSetup}>{loading ? "Extracting..." : actionLabel}</button>}
+          </div>
         </header>
         <div className="main-workspace">
-          <DocumentPanel file={file} onFile={(next) => { setFile(next); setResponse(null); setDemo(false); setError(""); setMobileView("data"); }} onExample={loadExample} exampleLoading={exampleLoading} demo={demo} visible={mobileView === "document"} />
-          {response ? <Results response={response} visible={mobileView === "data"} /> : <section className={`workspace-pane data-pane automatic-intro ${mobileView === "data" ? "mobile-visible" : ""}`} aria-labelledby="intro-heading"><header className="pane-header"><div><span className="pane-kicker">Automatic mode</span><h2 id="intro-heading">Ready to map your PDF</h2><p>Upload a document and extraction will discover fields, tables, and anything that needs review.</p></div></header><div className="intro-content"><div><span className="intro-number">01</span><strong>Structure first</strong><p>Markdown text supplies reading order and field boundaries.</p></div><div><span className="intro-number">02</span><strong>Coordinates confirm</strong><p>PDF positions recover sparse rows and visual relationships.</p></div><div><span className="intro-number">03</span><strong>Ambiguity stays visible</strong><p>Uncertain content is preserved for review instead of guessed.</p></div></div></section>}
+          <DocumentPanel file={file} onFile={changePdf} onExample={loadExample} exampleLoading={exampleLoading} demo={demo} visible={mobileView === "document"} />
+          {!file ? <section className={`workspace-pane data-pane automatic-intro ${mobileView === "data" ? "mobile-visible" : ""}`} aria-labelledby="intro-heading"><header className="pane-header"><div><span className="pane-kicker">Ready when you are</span><h2 id="intro-heading">Upload a PDF to begin</h2><p>Choose automatic extraction or provide a JSON schema for a focused result.</p></div></header><div className="intro-content"><div><strong>Automatic extraction</strong><p>Find fields, tables, and content that needs review.</p></div><div><strong>Schema extraction</strong><p>Return only the values and table rows you define.</p></div></div></section> : null}
+          {file && !response && setupStep === "mode" ? <ExtractionModeChooser selected={mode} visible={mobileView === "data"} hasSchema={Boolean(schemaUpload)} onSelect={selectMode} onContinue={continueSetup} /> : null}
+          {file && !response && setupStep === "schema" ? <SchemaUpload schema={schemaUpload?.schema || null} fileName={schemaUpload?.fileName || ""} error={schemaError} validating={schemaValidating} visible={mobileView === "data"} onFile={handleSchemaFile} onBack={() => setSetupStep("mode")} /> : null}
+          {response ? <Results response={response} visible={mobileView === "data"} /> : null}
         </div>
         {error ? <div className="error-bar" role="alert">{error}</div> : null}
       </div>

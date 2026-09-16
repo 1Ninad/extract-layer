@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import unittest
 from unittest.mock import patch
 
@@ -83,6 +84,73 @@ class BackendTests(unittest.TestCase):
         )
         self.assertEqual(200, response.status_code)
         self.assertEqual({"valid": True}, response.json())
+
+    def test_simple_json_schema_with_table_is_accepted_without_output_mode_or_types(self) -> None:
+        response = self.client.post(
+            "/api/schema/validate",
+            json={
+                "schema_version": 1,
+                "name": "invoice",
+                "description": "Extract invoice details and line items.",
+                "fields": [{"name": "invoice_number", "description": "The invoice number."}],
+                "table": {
+                    "name": "line_items",
+                    "description": "Each line item.",
+                    "fields": [{"name": "description", "description": "The line description."}],
+                },
+            },
+        )
+        self.assertEqual({"valid": True}, response.json())
+
+    def test_simple_json_schema_rejects_both_table_and_legacy_records(self) -> None:
+        response = self.client.post(
+            "/api/schema/validate",
+            json={
+                "schema_version": 1,
+                "name": "invoice",
+                "description": "Extract invoice details.",
+                "fields": [{"name": "invoice_number", "description": "The invoice number."}],
+                "table": {"name": "items", "description": "Rows.", "fields": [{"name": "value", "description": "Value."}]},
+                "records": {"name": "items", "description": "Rows.", "fields": [{"name": "value", "description": "Value."}]},
+            },
+        )
+        self.assertEqual(422, response.status_code)
+        self.assertIn("both table and records", response.json()["detail"])
+
+    def test_extraction_accepts_simple_json_schema_form_payload(self) -> None:
+        writer = PdfWriter()
+        writer.add_blank_page(width=100, height=100)
+        value = io.BytesIO()
+        writer.write(value)
+        schema = {
+            "schema_version": 1,
+            "name": "invoice",
+            "description": "Extract invoice rows.",
+            "fields": [{"name": "invoice_number", "description": "The invoice number."}],
+            "table": {
+                "name": "line_items",
+                "description": "Each line.",
+                "fields": [{"name": "description", "description": "The line description."}],
+            },
+        }
+        processing = {"mode": "native", "ocr_used": False, "note": "Native text processing."}
+        with patch(
+            "backend.main._run_extraction",
+            return_value=(
+                {"source_file": "test.pdf", "schema": "invoice", "fields": {}, "records": [], "table": {"name": "line_items", "description": "Each line.", "columns": ["description"], "rows": []}},
+                "source_file,invoice_number,description\ntest.pdf,,\n",
+                processing,
+            ),
+        ) as run_extraction:
+            response = self.client.post(
+                "/api/extractions",
+                files={"pdf": ("test.pdf", value.getvalue(), "application/pdf")},
+                data={"schema": json.dumps(schema)},
+            )
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("records", run_extraction.call_args.args[2].output_mode)
+        self.assertEqual("line_items", run_extraction.call_args.args[2].records.name)
 
     def test_extraction_rejects_more_than_twenty_pages_before_processing(self) -> None:
         writer = PdfWriter()

@@ -15,7 +15,7 @@ from typing import Any
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field as PydanticField
 from pypdf import PdfReader
 
 
@@ -64,9 +64,10 @@ class SchemaPayload(BaseModel):
     schema_version: int = 1
     name: str
     description: str
-    output_mode: str
-    fields: list[dict[str, Any]]
+    output_mode: str | None = None
+    fields: list[dict[str, Any]] = PydanticField(default_factory=list)
     records: dict[str, Any] | None = None
+    table: dict[str, Any] | None = None
 
 
 def _validated_schema(raw: str | dict[str, Any]) -> ExtractionSchema:
