@@ -21,7 +21,7 @@ export function ExtractionModeChooser({ selected, visible, hasSchema, onSelect, 
             <span className="mode-option-icon"><LightningBoltIcon aria-hidden="true" /></span><span><strong>Automatic extraction</strong><small>Find fields, tables, and content that needs review.</small></span>
           </button>
           <button type="button" className={`mode-option ${selected === "schema" ? "selected" : ""}`} role="radio" aria-checked={selected === "schema"} onClick={() => onSelect("schema")}>
-            <span className="mode-option-icon"><FileTextIcon aria-hidden="true" /></span><span><strong>Use a JSON schema</strong><small>Return only the fields and table rows defined in your file.</small></span>{hasSchema ? <em>Ready</em> : null}
+            <span className="mode-option-icon"><FileTextIcon aria-hidden="true" /></span><span><strong>Define a schema</strong><small>Describe the fields you need, or use an existing JSON schema.</small></span>{hasSchema ? <em>Ready</em> : null}
           </button>
         </div>
         <button className="primary-button mode-continue" type="button" disabled={!selected} onClick={onContinue}>{selected === "schema" && !hasSchema ? "Choose schema" : "Continue"}<ArrowRightIcon aria-hidden="true" /></button>

@@ -9,7 +9,7 @@ const WORKSPACE_PATH = "/workspace";
 const steps = [
   { number: "01", title: "Upload a PDF", description: "Start with a report, invoice, contract, transcript, or any document." },
   { number: "02", title: "Choose the shape", description: "Use automatic extraction or provide a schema for a focused result." },
-  { number: "03", title: "Review and export", description: "Inspect values, confidence, citations, and download structured data." },
+  { number: "03", title: "Review and export", description: "Inspect values and download structured data." },
 ];
 
 function Logo() {
@@ -25,7 +25,7 @@ function Header() {
 }
 
 function Hero() {
-  return <section className="focus-hero" id="top"><div className="landing-container focus-hero-grid"><div className="focus-hero-copy"><p className="landing-kicker">PDF to structured data</p><h1>Extract structured data from every PDF.</h1><p className="landing-hero-description">Upload a document, define the fields you need, and review precise results with source-level confidence.</p><div className="landing-button-row"><ButtonLink href={WORKSPACE_PATH}>Open workspace</ButtonLink><ButtonLink href="#how-it-works" inverted>See the workflow</ButtonLink></div><p className="focus-proof">Local-first workflow · confidence + citations</p></div><div className="focus-hero-art"><span className="focus-art-label">source / schema / output</span><img src="/document-flow.png" alt="PDF extraction flow from source document to structured output" /></div></div></section>;
+  return <section className="focus-hero" id="top"><div className="landing-container focus-hero-grid"><div className="focus-hero-copy"><p className="landing-kicker">PDF to structured data</p><h1>Extract structured data from every PDF.</h1><p className="landing-hero-description">Upload a document, define the fields you need, and review precise results.</p><div className="landing-button-row"><ButtonLink href={WORKSPACE_PATH}>Open workspace</ButtonLink><ButtonLink href="#how-it-works" inverted>See the workflow</ButtonLink></div><p className="focus-proof">Local-first workflow · confidence + citations</p></div><div className="focus-hero-art"><span className="focus-art-label">source / schema / output</span><img src="/document-flow.png" alt="PDF extraction flow from source document to structured output" /></div></div></section>;
 }
 
 function HowItWorks() {

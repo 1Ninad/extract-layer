@@ -7,7 +7,7 @@ const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variabl
 
 export const metadata: Metadata = {
   title: "Document to Structured Data | PDF workspace",
-  description: "Extract structured data from documents with confidence scores and citations.",
+  description: "Extract structured data from documents.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

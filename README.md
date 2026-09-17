@@ -42,9 +42,11 @@ npm run dev
 
 ## Schema extraction
 
-After uploading a PDF, choose **Use a JSON schema** and upload a `.json` file.
-The file is read in the browser, validated locally and by the backend, and is
-not stored on the server.
+After uploading a PDF, choose **Define a schema**. You can either upload a
+`.json` file or use **Build in app** to enter the schema name, document
+description, requested fields, and (optionally) repeated record fields. Both
+paths are validated in the browser/backend and sent through the same schema
+extraction flow; the schema is not stored on the server.
 
 The simple schema format has document fields and one optional repeated table.
 The repeated collection may be named `table` or `records`; rows can span
