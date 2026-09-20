@@ -1,16 +1,19 @@
 # Application architecture
 
 This diagram describes the current PDF-to-structured-data application. It
-uses a left-to-right layout so the request path remains readable on a normal
-documentation page. Uploaded PDFs and schemas are processed in memory and in
-temporary working directories; the application does not persist user uploads.
+uses a manually composed left-to-right layout so the request path, extraction
+branches, external model boundary, and browser review loop remain readable on
+a normal documentation page. Uploaded PDFs and schemas are processed in
+memory and in temporary working directories; the application does not persist
+user uploads.
 
 ## Overview
 
 ![PDF extraction application architecture](application-architecture.svg)
 
-The editable diagram source is
-[application-architecture.dot](application-architecture.dot).
+The SVG is the authoritative presentation artifact. The older
+[application-architecture.dot](application-architecture.dot) file is retained
+as a rough editable reference; it is not used to generate the current layout.
 
 ## Primary data flow
 
@@ -80,7 +83,3 @@ are retained so rows remain associated with the correct section.
 - [backend/automatic_extraction.py](../backend/automatic_extraction.py) — deterministic mapping
 - [backend/schema_extractor.py](../backend/schema_extractor.py) — model call and source validation
 - [docs/automatic-field-mapping-plan.md](automatic-field-mapping-plan.md) — automatic mapping invariants
-
-
-**Diagram updated command:** dot -Tsvg docs/application-architecture.dot \
-  -o docs/application-architecture.svg

@@ -1,11 +1,11 @@
 ## Notes
-- Use /design-taste-frontend skill for any frontend task.
 - Keep code simple, reusable, and any specific PDF-agnostic. Do not hardcode one document's layout or fields.
 - Keep comments short, clear, precise, and natural. Add them only when they explain important or non-obvious logic.
 - Keep the frontend usable on both mobile and desktop.
 - Before Git/GitHub push, update README.md file & AGENTS.md's Repository Map section (if any changes required)/
 - Commit message should be within 8 words. Should be simple, easy to understand quickly, clear, crisp, precise, natural, and by real human.
-- I like clean, minimalist, rich, tech. enterprise-ready frontend.
+- I like these frontends, UI/UX, etc: https://hex.tech/, https://www.baseten.co/, https://www.pinecone.io/product/database/, https://www.llamaindex.ai/
+- image gen skill can be used whenever required.
 
 ## Repository map
 
@@ -57,5 +57,4 @@ The extraction flow is: PDF → LiteParse/Docling → automatic extraction or co
 ## Guardrails
 
 - Prefer targeted `rg` searches and caller/import tracing. Read nearby tests before changing behavior.
-- Update the closest source-of-truth doc when a stable behavior or design decision changes.
 - Ignore `.venv/`, `frontend/node_modules/`, `.git/`, `__pycache__/`, `.DS_Store`, generated output, and `.env`. Never expose `.env` contents.
