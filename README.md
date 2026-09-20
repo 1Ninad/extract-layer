@@ -138,70 +138,6 @@ JSON keeps document fields and records separate. CSV is flat: a document-only
 schema produces one row, while a records schema produces one row per record
 and repeats the document fields.
 
-## CLI
-
-The command-line flow accepts JSON or TOML schemas. It can also create a TOML
-schema interactively.
-
-Create a schema:
-
-```bash
-.venv/bin/python -m backend.run_pdf_to_outputs \
-  --init-schema config/schema.toml
-```
-
-Extract the example document:
-
-```bash
-.venv/bin/python -m backend.run_pdf_to_outputs \
-  --pdf examples/input1.pdf \
-  --schema examples/input1.json \
-  --output-dir output \
-  --flat-output
-```
-
-Useful options include:
-
-- `--ocr` - enable OCR explicitly.
-- `--model MODEL` - select the OpenRouter model.
-- `--save-markdown` - keep the merged Markdown used during extraction.
-- `--flat-output` - write output files directly under `--output-dir`.
-
-The CLI writes JSON and CSV files using the input filename as the output stem.
-
-## Configuration
-
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `OPENROUTER_API_KEY` | API key for schema extraction | unset |
-| `OPENROUTER_MODEL` | OpenRouter model name | application default |
-| `NEXT_PUBLIC_API_URL` | API URL used by the frontend | `http://localhost:8000` |
-| `FRONTEND_ORIGINS` | Comma-separated allowed browser origins | localhost and `127.0.0.1` on port 3000 |
-| `MAX_PDF_BYTES` | Maximum PDF size | 25 MB |
-| `MAX_PDF_PAGES` | Maximum PDF page count | 20 |
-| `EXTRACTION_CONCURRENCY` | Maximum concurrent extraction jobs | 2 |
-| `BACKEND_PORT` | Port used by `run_web_app.sh` | 8000 |
-| `FRONTEND_PORT` | Port used by `run_web_app.sh` | 3000 |
-
-The backend loads a root `.env` file when present. The launcher checks that
-the selected backend and frontend ports are free before starting.
-
-## Verification
-
-Run the backend tests:
-
-```bash
-.venv/bin/python -m unittest tests.test_backend tests.test_generalized_extraction
-```
-
-Check and build the frontend:
-
-```bash
-cd frontend
-npm run typecheck
-npm run build
-```
-
 ## Documentation
 
 - [Application architecture](docs/application-architecture.md) - request flow, components, boundaries, and correctness decisions.
@@ -221,9 +157,3 @@ tests/         Backend and generalized extraction tests
 examples/      Sample PDF, schema, and output files
 docs/          Architecture and mapping documentation
 ```
-
-## Acknowledgements
-
-The extraction pipeline is built around [LiteParse](https://github.com/marker-ai/liteparse),
-[Docling](https://github.com/docling-project/docling), [FastAPI](https://fastapi.tiangolo.com/),
-and [Next.js](https://nextjs.org/).
