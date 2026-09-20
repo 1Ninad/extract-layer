@@ -17,30 +17,19 @@
 
 ## What it is
 
-PDFs are made for reading. This application makes them easier to use by turning
-their text and tables into structured JSON and CSV.
+This application converts digitally-generated PDFs into CSV and JSON - ready for use-cases like update databases, etc.
 
-Upload a PDF, choose how you want to extract it, and review the result in the
-web workspace. You can let the application find fields automatically or define
-the exact fields you need with a schema.
-
-The application is document-agnostic. It does not depend on one fixed PDF
-layout, translate values, calculate new values, round numbers, convert units,
-or invent missing data. Values are kept as printed in the source document.
-
-Uploads are processed in memory and temporary working directories. They are
-not stored by the application.
+Upload a PDF, choose how you want to extract it, and review the result in the web. You can let the application find fields automatically or define a schema. The application is layout-agnostic.
 
 ## Features
 
 - **Two extraction modes** - use deterministic automatic extraction or define a schema for a focused result.
 - **PDF-aware parsing** - combine LiteParse text with Docling tables and PDF coordinates.
 - **OCR fallback** - retry the complete parsing flow with OCR when native text is not usable.
-- **Source-faithful values** - keep spelling, punctuation, symbols, spaces, and numeric formatting from the PDF.
-- **Table support** - extract repeated rows across table sections and continuation pages while keeping row order.
-- **Review-friendly output** - keep uncertain relationships, unlabeled content, and review items visible instead of silently dropping them.
-- **JSON and CSV export** - return structured JSON plus a flat CSV convenience format.
-- **Web and CLI workflows** - use the browser workspace or run the same schema pipeline from the command line.
+- **Source-faithful values** - keep spelling, punctuation, symbols, spaces, and numeric formatting sourced-from the PDF.
+- **Table support** - extract rows across table sections and continuation pages while keeping row order.
+- **JSON and CSV export** - return structured JSON and CSV.
+- **Web and CLI workflows** - use the browser app or run the same schema pipeline from the command line.
 
 More detail is in [the application architecture](docs/application-architecture.md).
 
@@ -75,28 +64,7 @@ bash run_web_app.sh
 ```
 
 
-## How it works
-
-```text
-PDF
-  -> validate file, size, and page count
-  -> parse with LiteParse and Docling
-  -> build shared Markdown and table evidence
-  -> automatic mapping or schema-driven mapping
-  -> validate values against the processed source
-  -> return JSON and CSV
-  -> review and download in the workspace
-```
-
-The parser first tries native text extraction. If the result is empty,
-corrupted, or the pipeline fails, the complete parse is retried with OCR so
-text and table evidence come from the same extraction run.
-
-The API returns the extracted result, CSV content, page count, elapsed time,
-and processing metadata. The browser shows mapped fields, tables, review
-items, and source-related notes before export.
-
-## Automatic extraction
+## Automatic extraction mode
 
 Automatic extraction makes no LLM calls. It uses:
 
@@ -110,7 +78,7 @@ source text is preserved so a user can inspect the complete result.
 Use this mode when you want a quick structured result without writing a schema
 or configuring an external model.
 
-## Schema extraction
+## Schema extraction mode
 
 Schema extraction lets you describe the fields you want. You can upload a JSON
 schema or build one in the web workspace. The schema is validated before the
@@ -129,14 +97,6 @@ PDF or the complete processed Markdown. The model chooses the best semantic
 match; the local application remains responsible for source validation. If a
 value cannot be matched safely, it is rejected instead of being invented.
 
-### Schema shape
-
-A schema contains document fields and may contain one repeated `records`
-collection. The web API also accepts `table` as an alias for `records`.
-
-JSON keeps document fields and records separate. CSV is flat: a document-only
-schema produces one row, while a records schema produces one row per record
-and repeats the document fields.
 
 ## Documentation
 
@@ -156,4 +116,4 @@ frontend/      Next.js workspace and review interface
 tests/         Backend and generalized extraction tests
 examples/      Sample PDF, schema, and output files
 docs/          Architecture and mapping documentation
-```
+``
